@@ -1,0 +1,21 @@
+id,fecha,tipo_proceso,canal,tiempo_ciclo,costo,errores,prediccion_clase,confianza_prediccion,accion_automatica,prioridad_automatica,asignado_a
+20001,2024-01-03 15:50:00,Logística,WhatsApp,42.8,136.43,0,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20002,2024-01-06 13:37:00,Soporte,WhatsApp,39.4,32.1,0,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20003,2024-01-01 04:09:00,Inventario,WhatsApp,88.1,177.03,2,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20004,2024-01-03 04:01:00,Inventario,WhatsApp,42.8,22.69,1,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20005,2024-01-07 17:27:00,Pagos,WhatsApp,9.7,173.02,1,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20006,2024-01-03 04:43:00,Pagos,WhatsApp,11.4,208.88,0,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20007,2024-01-02 21:34:00,Facturación,WhatsApp,30.6,223.46,1,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20008,2024-01-01 21:14:00,Fraude,Web,48.3,157.0,0,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20009,2024-01-07 08:11:00,Fraude,Web,28.1,65.96,1,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20010,2024-01-07 21:51:00,Fraude,Manual,109.4,87.46,0,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20011,2024-01-03 02:05:00,Fraude,API,61.9,59.64,0,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20012,2024-01-07 00:22:00,Fraude,Manual,23.9,32.09,0,Manual,0.92,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20013,2024-01-05 14:14:00,Fraude,Web,2.5,75.73,0,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20014,2024-01-05 23:11:00,Fraude,API,0.1,9.45,0,Automático,0.879581536900837,PROCESAR_BATCH,Baja,Robot_Procesos
+20015,2024-01-02 11:30:00,Inventario,Web,44.9,44.96,1,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20016,2024-01-04 11:49:00,Facturación,Manual,13.1,61.67,2,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20017,2024-01-01 09:53:00,Pagos,API,21.4,33.79,1,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20018,2024-01-04 01:42:00,Inventario,Web,2.3,118.33,0,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward
+20019,2024-01-04 10:59:00,Inventario,Web,10.4,34.67,0,Automático,0.8882158095739058,PROCESAR_BATCH,Baja,Robot_Procesos
+20020,2024-01-04 12:07:00,Pagos,Sistema,21.0,72.5,0,Manual,1.0,REVISAR_DATOS_NUEVOS,Alta,Data_Steward

@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "versi\u00f3n": "1.2",
+    "fecha_ejecuci\u00f3n": "2026-03-21 20:43:15.240273",
+    "total_registros": 50,
+    "modelo": "Random Forest",
+    "accuracy": 0.999,
+    "confianza_promedio": 0.9905970333354194,
+    "random_seed": 42,
+    "class_distribution_train": {
+      "0": 0.05,
+      "1": 0.9376,
+      "2": 0.0124
+    }
+  },
+  "distribuci\u00f3n_predicciones": {
+    "Manual": 47,
+    "Autom\u00e1tico": 2,
+    "Revisi\u00f3n": 1
+  },
+  "acciones_autom\u00e1ticas": {
+    "PROCESAR_BATCH": 2,
+    "NOTIFICAR": 1,
+    "REVISAR": 47,
+    "REVISAR_DATOS_NUEVOS": 0
+  }
+}
