@@ -178,11 +178,14 @@ async def clean_csv_upload(
                 for chunk in [data[i:i + 1000] for i in range(0, len(data), 1000)]:
                     db.bulk_insert_mappings(db_models.CleanedInteraction, chunk)
                 msg = "¡HISTORIAL DE INTERACCIONES alimentado al sistema!"
+                
+            else:
+                raise HTTPException(status_code=400, detail=f"Archivo no reconocido. Columnas: {cols}")
 
             db.commit()
         except Exception as e:
             db.rollback()
-            msg = f"Limpieza OK, pero la sincronización falló: {str(e)}"
+            raise HTTPException(status_code=500, detail=f"Sincronización BD falló: {str(e)}")
 
     return {
         "status": "success",
