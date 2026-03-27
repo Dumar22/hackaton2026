@@ -135,31 +135,50 @@ async def clean_csv_upload(
     df = cleaner.check_logical_integrity(df)
     df = cleaner.normalize_text(df)
 
-    # PERSISTENCE LOGIC (Optional)
+    # ── NUEVO: Mapeo de columnas dinámico ──
+    from app.analysis.adaptive import dynamic_column_mapping
+    df = dynamic_column_mapping(df, {})
+
+    # Reemplazar NaN por None para que SQLAlchemy lo procese correctamente
+    df = df.where(pd.notnull(df), None)
+
+    # PERSISTENCE LOGIC
     msg = "Validación completada. (Sin cambios en BD)"
     cols = [c.lower() for c in df.columns]
     
     if persist:
         try:
-            if "usuario_id" in cols and "nombre" in cols:
-                # Es un archivo de Usuarios
-                for _, row in df.iterrows():
-                    db.merge(db_models.CleanedUser(
-                        usuario_id=int(row['usuario_id']),
-                        nombre=str(row['nombre']),
-                        ciudad=str(row.get('ciudad', 'Desconocido')),
-                        edad=int(row.get('edad', 0))
-                    ))
+            if "usuario_id" in cols and ("edad" in cols or "ciudad" in cols):
+                allowed = ["usuario_id", "edad", "genero", "ciudad", "fecha_registro"]
+                data = df[[c for c in allowed if c in cols]].to_dict(orient="records")
+                for chunk in [data[i:i + 1000] for i in range(0, len(data), 1000)]:
+                    db.bulk_insert_mappings(db_models.CleanedUser, chunk)
                 msg = "¡Base de USUARIOS actualizada y sincronizada!"
+
+            elif "producto_id" in cols and ("categoria" in cols or "nombre" in cols):
+                allowed = ["producto_id", "nombre", "categoria"]
+                data = df[[c for c in allowed if c in cols]].to_dict(orient="records")
+                for chunk in [data[i:i + 1000] for i in range(0, len(data), 1000)]:
+                    db.bulk_insert_mappings(db_models.CleanedProduct, chunk)
+                msg = "¡Base de PRODUCTOS actualizada y sincronizada!"
+
             elif "tipo_evento" in cols:
-                # Es un archivo de Eventos
-                for _, row in df.iterrows():
-                    db.add(db_models.CleanedEvent(
-                        usuario_id=int(row['usuario_id']),
-                        tipo_evento=str(row['tipo_evento']),
-                        timestamp=pd.to_datetime(row.get('timestamp', 'now'))
-                    ))
+                if "fecha" in cols: df = df.rename(columns={"fecha": "fecha_evento"})
+                elif "timestamp" in cols: df = df.rename(columns={"timestamp": "fecha_evento"})
+                cols = [c.lower() for c in df.columns]
+                allowed = ["usuario_id", "fecha_evento", "tipo_evento", "detalle"]
+                data = df[[c for c in allowed if c in cols]].to_dict(orient="records")
+                for chunk in [data[i:i + 1000] for i in range(0, len(data), 1000)]:
+                    db.bulk_insert_mappings(db_models.CleanedEvent, chunk)
                 msg = "¡HISTORIAL DE EVENTOS alimentado al sistema!"
+
+            elif "accion" in cols and "producto_id" in cols:
+                allowed = ["usuario_id", "producto_id", "fecha", "accion"]
+                data = df[[c for c in allowed if c in cols]].to_dict(orient="records")
+                for chunk in [data[i:i + 1000] for i in range(0, len(data), 1000)]:
+                    db.bulk_insert_mappings(db_models.CleanedInteraction, chunk)
+                msg = "¡HISTORIAL DE INTERACCIONES alimentado al sistema!"
+
             db.commit()
         except Exception as e:
             db.rollback()
