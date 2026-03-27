@@ -55,9 +55,10 @@ class DataPipeline:
     Can be used from the CLI (run_pipeline.py) or via the FastAPI endpoint.
     """
 
-    def __init__(self, data_dir: Path, cleaner: Optional[BaseCleaner] = None):
+    def __init__(self, data_dir: Path, cleaner: Optional[BaseCleaner] = None, db = None):
         self.data_dir = data_dir
         self.cleaner = cleaner or CSVCleaner()
+        self.db = db
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -166,19 +167,44 @@ class DataPipeline:
         }
         
         def load_one(name: str, fname: str):
+            # 1. Try from Database
+            if self.db is not None:
+                table_map = {
+                    "usuarios": "cleaned_users",
+                    "eventos": "cleaned_events",
+                    "productos": "cleaned_products",
+                    "interacciones": "cleaned_interactions"
+                }
+                table_name = table_map.get(name)
+                if table_name:
+                    try:
+                        df = pd.read_sql(f"SELECT * FROM {table_name}", self.db.get_bind())
+                        if not df.empty:
+                            print(f"   ↳ DB {table_name}: {len(df)} rows loaded.")
+                            return name, df
+                    except Exception as e:
+                        print(f"DB load failed for {name}: {e}")
+
+            # 2. Fallback to CSV
             path = self.data_dir / fname
             if not path.exists():
                 found_files = list(self.data_dir.glob(f"*{name}*.csv"))
                 if found_files: path = found_files[0]
-                else: raise FileNotFoundError(f"Data file not found: {path}")
+                else: 
+                    print(f"   ↳ Warning: {name} not found. Returning empty DataFrame.")
+                    return name, pd.DataFrame()
             
             df = pd.read_csv(path)
             df = dynamic_column_mapping(df, {})
-            print(f"   ↳ {path.name}: {len(df)} rows loaded.")
+            print(f"   ↳ CSV {path.name}: {len(df)} rows loaded.")
             return name, df
 
-        with ThreadPoolExecutor() as executor:
-            results = list(executor.map(lambda p: load_one(*p), files.items()))
+        # We must disable ThreadPoolExecutor for Postgres read_sql because SQLAlchemy session 
+        # is usually not thread-safe across multiple concurrent queries if we're sharing it.
+        # We will load sequentially to avoid OperationalError or Concurrent issues.
+        results = []
+        for k, v in files.items():
+            results.append(load_one(k, v))
         
         return dict(results)
 

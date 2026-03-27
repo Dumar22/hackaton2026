@@ -82,26 +82,29 @@ def health():
 # Data endpoints
 # ---------------------------------------------------------------------------
 @app.get("/data/summary", tags=["Data"])
-def data_summary():
+def data_summary(db: Session = Depends(get_db)):
     """
-    Returns a summary of the built-in sample datasets
-    (usuarios, eventos, productos, interacciones).
+    Returns a summary of the data tables.
     """
-    data_dir = settings.DATA_DIR
-    files = ["usuarios.csv", "eventos.csv", "productos.csv", "interacciones.csv"]
     summary = {}
-    for fname in files:
-        path = data_dir / fname
-        if path.exists():
-            df = pd.read_csv(path)
+    tables = {
+        "usuarios.csv": db_models.CleanedUser,
+        "eventos.csv": db_models.CleanedEvent,
+        "productos.csv": db_models.CleanedProduct,
+        "interacciones.csv": db_models.CleanedInteraction,
+    }
+    for fname, model in tables.items():
+        try:
+            count = db.query(model).count()
+            cols = [c.name for c in model.__table__.columns]
             summary[fname] = {
-                "rows": df.shape[0],
-                "columns": df.shape[1],
-                "column_names": list(df.columns),
-                "missing_values": int(df.isnull().sum().sum()),
+                "rows": count,
+                "columns": len(cols),
+                "column_names": cols,
+                "missing_values": 0,
             }
-        else:
-            summary[fname] = {"error": "File not found"}
+        except Exception as e:
+            summary[fname] = {"error": str(e)}
     return summary
 
 
@@ -245,7 +248,7 @@ def run_pipeline(db: Session = Depends(get_db)):
     →  D. AI Model  →  E. Insight Generation  →  F. Decision Making
     →  G. Business Action
     """
-    pipeline = DataPipeline(data_dir=settings.DATA_DIR)
+    pipeline = DataPipeline(data_dir=settings.DATA_DIR, db=db)
     result = pipeline.run()
     
     if result.success:
@@ -423,27 +426,21 @@ def get_all_insights(db: Session = Depends(get_db)):
 # User specific endpoints
 # ---------------------------------------------------------------------------
 @app.get("/user/{user_id}/stats", tags=["User"])
-def get_user_stats(user_id: int):
+def get_user_stats(user_id: int, db: Session = Depends(get_db)):
     """
     Returns statistics and recommendations for a single user.
     """
-    data_dir = settings.DATA_DIR
-    ints_path = data_dir / "interacciones.csv"
-    if not ints_path.exists():
-        return {"error": "Interactions data not found"}
-        
-    df_ints = pd.read_csv(ints_path)
-    user_data = df_ints[df_ints["usuario_id"] == user_id]
+    interactions = db.query(db_models.CleanedInteraction).filter(db_models.CleanedInteraction.usuario_id == user_id).all()
     
-    if user_data.empty:
+    if not interactions:
         return {"message": "No data found for this user", "user_id": user_id}
         
     stats = {
         "user_id": user_id,
-        "total_interactions": len(user_data),
-        "completions": len(user_data[user_data["accion"] == "completado"]),
-        "abandonments": len(user_data[user_data["accion"] == "abandonado"]),
-        "completion_rate": (len(user_data[user_data["accion"] == "completado"]) / len(user_data)) * 100 if len(user_data) > 0 else 0
+        "total_interactions": len(interactions),
+        "completions": sum(1 for i in interactions if i.accion == "completado"),
+        "abandonments": sum(1 for i in interactions if i.accion == "abandonado"),
+        "completion_rate": (sum(1 for i in interactions if i.accion == "completado") / len(interactions)) * 100 if interactions else 0
     }
     
     return stats

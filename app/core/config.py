@@ -31,3 +31,8 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Fix for Render (and other providers) that use 'postgres://' instead of 'postgresql://'
+# SQLAlchemy 2.0+ requires 'postgresql://'
+if settings.DATABASE_URL.startswith("postgres://"):
+    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgres://", "postgresql://", 1)
