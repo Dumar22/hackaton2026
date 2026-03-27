@@ -98,6 +98,9 @@ class DataPipeline:
 
             # ── D. AI / Algorithm ────────────────────────────────────────
             print("[D] Running AI models…")
+            if clean.get("usuarios", pd.DataFrame()).empty:
+                raise ValueError("La base de datos está vacía. Por favor, sube y sincroniza los archivos de datos primero.")
+            
             feat = self._model(clean)
             result.stages["D_model"] = {
                 "segment_distribution": feat["segment_label"].value_counts().to_dict()
@@ -179,9 +182,8 @@ class DataPipeline:
                 if table_name:
                     try:
                         df = pd.read_sql(f"SELECT * FROM {table_name}", self.db.get_bind())
-                        if not df.empty:
-                            print(f"   ↳ DB {table_name}: {len(df)} rows loaded.")
-                            return name, df
+                        print(f"   ↳ DB {table_name}: {len(df)} rows loaded.")
+                        return name, df
                     except Exception as e:
                         print(f"DB load failed for {name}: {e}")
 
