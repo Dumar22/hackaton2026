@@ -3,131 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hack-2026 | AI Data Intelligence</title>
+    <title>Hack-2026 | React AI Data Intelligence</title>
     <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/styles.css">
+    
+    <!-- React & ReactDOM (Production Minified for Speed) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel standalone for JSX compilation in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body class="dark-mode">
+<body data-theme="light">
 
-    <!-- Global Layout -->
-    <div class="app-container">
-        
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="logo">
-                <i class="fas fa-brain-circuit"></i>
-                <span>HACK-2026</span>
-            </div>
-            <nav class="nav-links">
-                <a href="#dashboard" class="active"><i class="fas fa-chart-line"></i> Dashboard</a>
-                <a href="#upload"><i class="fas fa-cloud-upload-alt"></i> Subir Datos</a>
-                <a href="#insights"><i class="fas fa-lightbulb"></i> AI Insights</a>
-                <a href="#actions"><i class="fas fa-tasks"></i> Acciones</a>
-                <a href="#chat"><i class="fas fa-robot"></i> AI Chat</a>
-            </nav>
-        </aside>
+    <!-- Recipient for React DOM -->
+    <div id="root"></div>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            
-            <header class="top-header">
-                <div class="header-info">
-                    <h1>Data Intelligence Dashboard</h1>
-                    <p>Procesa, limpia y genera valor con IA generativa.</p>
-                </div>
-                <div class="user-meta">
-                    <button id="runPipelineBtn" class="btn btn-primary">
-                        <i class="fas fa-play"></i> Ejecutar Pipeline Completo
-                    </button>
-                </div>
-            </header>
-
-            <!-- Seccion DASHBOARD (Por defecto visible) -->
-            <div id="section-dashboard" class="content-section">
-                <!-- Dashboard Overview Cards -->
-                <section class="stats-grid">
-                    <div class="stat-card">
-                        <span class="label">Usuarios Totales</span>
-                        <h3 id="statTotalUsers">---</h3>
-                        <div class="trend up"><i class="fas fa-users"></i> 500</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="label">Riesgo Promedio</span>
-                        <h3 id="statAvgRisk">---</h3>
-                        <div class="trend warning"><i class="fas fa-exclamation-triangle"></i> Media</div>
-                    </div>
-                    <div class="stat-card">
-                        <span class="label">Acciones Pendientes</span>
-                        <h3 id="statPendingActions">---</h3>
-                        <div class="trend success"><i class="fas fa-check-circle"></i> Listo</div>
-                    </div>
-                </section>
-
-                <!-- Middle Section: Visuals -->
-                <section class="visuals-grid">
-                    <div class="card chart-container">
-                        <h3>Segmentación de Usuarios (KMeans)</h3>
-                        <canvas id="segmentsChart"></canvas>
-                    </div>
-                    <div class="card insights-container">
-                        <h3>Top Insights <span class="badge ai">AI Generated</span></h3>
-                        <div id="insightsList" class="insights-scroll">
-                            <p class="empty-state">Ejecuta el pipeline para ver hallazgos.</p>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- Seccion ACCIONES -->
-            <div id="section-actions" class="content-section hidden">
-                <section class="actions-grid-full">
-                    <div class="card actions-feed">
-                        <h3>Hoja de Ruta de Decisiones</h3>
-                        <div id="actionsTimeline" class="timeline">
-                            <p class="empty-state">No hay acciones registradas.</p>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- Seccion CHAT INTEGRADO -->
-            <section id="section-chat" class="content-section hidden">
-                <div class="card chat-card-full">
-                    <h3>Pregúntale a la IA sobre tus datos <i class="fas fa-sparkles"></i></h3>
-                    <div id="chatMessages" class="chat-messages big-chat">
-                        <div class="bot-msg">¡Hola! Soy tu asistente de CloudLabs. Ejecuta el pipeline y pregúntame lo que quieras sobre tus usuarios.</div>
-                    </div>
-                    <div class="chat-input-area">
-                        <input type="text" id="chatInput" placeholder="¿Cómo mejorar la retención?">
-                        <button id="sendChatBtn"><i class="fas fa-paper-plane"></i></button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Seccion UPLOAD (Subir archivos) -->
-            <section id="section-upload" class="content-section hidden">
-                <div class="card upload-section">
-                    <h3>Carga de Archivos Reales</h3>
-                    <div class="dropzone" id="dropzone">
-                        <i class="fas fa-file-csv"></i>
-                        <p>Arrastra tus nuevos archivos CSV aqui o Haz Click</p>
-                        <input type="file" id="fileInput" hidden accept=".csv">
-                    </div>
-                    <div id="uploadStatus"></div>
-                </div>
-            </section>
-
-        </main>
-    </div>
-
-    <!-- Notification Toast -->
-    <div id="toast" class="toast hidden"></div>
-
-    <script src="/static/js/app.js"></script>
+    <!-- Our React Application -->
+    <script type="text/babel" src="/static/app.jsx"></script>
 </body>
 </html>

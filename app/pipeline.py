@@ -106,7 +106,12 @@ class DataPipeline:
 
             # ── E. Insight Generation ────────────────────────────────────
             print("[E] Generating insights…")
-            insights_gen = InsightsGenerator(feat, clean["productos"])
+            insights_gen = InsightsGenerator(
+                feat, 
+                clean["productos"],
+                clean["eventos"],
+                clean["interacciones"]
+            )
             insights = insights_gen.generate()
             result.stages["E_insights"] = {
                 "total_insights": len(insights),

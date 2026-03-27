@@ -12,37 +12,64 @@ class AIChatBot:
     """
     
     def __init__(self, api_key: str = settings.OPENAI_API_KEY):
-        if api_key and api_key.startswith("sk-"):
-            self.client = OpenAI(api_key=api_key)
-            self._active = True
-        else:
-            self._active = False
-    
+        self._active = False
+        if api_key and (api_key.startswith("sk-") or len(api_key) > 20):
+            try:
+                self.client = OpenAI(api_key=api_key)
+                self._active = True
+            except Exception:
+                self._active = False
+
     def chat(self, user_query: str, pipeline_data: Dict[str, Any]) -> str:
         """
-        Sends a query to OpenAI including findings from the pipeline as context.
+        AI Analyst with Dual Response format (Data + Interpretation).
         """
         if not self._active:
-            return "AI Chat disabled: A valid OPENAI_API_KEY is missing in .env."
+            return "⚠️ IA Desconectada: Configura tu OPENAI_API_KEY en el archivo .env correctamente."
             
-        # Extract main findings for the context
-        insights = pipeline_data.get("E_insights", {}).get("insights", [])
-        decisions = pipeline_data.get("F_decisions", {}).get("decisions", [])
+        # Contexto de CloudLabs basado en el PDF de la empresa
+        cloudlabs_context = """
+        CONTEXTO EMPRESA: CloudLabs Learning es una plataforma EdTech colombiana presente en 32 países. 
+        Misión: Revolucionar la educación STEM mediante simulaciones inmersivas y aprendizaje basado en retos.
+        Impacto: +900,000 estudiantes y +5,000 instituciones.
+        Metodología: Aprendizaje centrado en el estudiante, multidisciplinar y centrado en resultados reales.
+        """
+        
+        # Limpiar datos masivos para ahorrar tokens (No enviar listas de 50k IDs)
+        clean_insights = []
+        for i in pipeline_data.get("E_insights", {}).get("insights", []):
+            clean_insights.append({
+                "titulo": i.get("title"),
+                "descripcion": i.get("description"),
+                "metrica": i.get("metric")
+            })
+            
+        clean_decisions = []
+        for d in pipeline_data.get("F_decisions", {}).get("decisions", []):
+            clean_decisions.append({
+                "prioridad": d.get("priority"),
+                "tipo_accion": d.get("action_type"),
+                "resumen": d.get("summary")
+            })
+
         risk_summary = pipeline_data.get("D_model", {})
         
-        # Build strict system prompt
         system_prompt = f"""
-        ROL: Eres el Asistente Experto en Inteligencia Educativa de CloudLabs.
+        {cloudlabs_context}
         
-        RESTRICCIONES CRÍTICAS: 
-        1. SOLO puedes responder preguntas relacionadas con el análisis de datos de los estudiantes y el rendimiento de la plataforma CloudLabs.
-        2. Si la pregunta es ajena a CloudLabs o a los datos provistos, responde: "Como asistente de análisis de CloudLabs, solo puedo ayudarte con información sobre el rendimiento académico y de negocio de nuestra plataforma."
-        3. NO inventes datos. Usa solo la información del CONTEXTO DE DATOS.
+        ROL: Eres el Copiloto de Inteligencia de Negocio de CloudLabs. 
+        TU MISIÓN: Ayudar a los tomadores de decisiones a convertir datos en acciones de retención de estudiantes.
         
-        CONTEXTO DE DATOS ACTUALES:
-        - Resumen de Riesgo: {risk_summary}
-        - Insights clave: {insights}
-        - Decisiones sugeridas con prioridad: {decisions}
+        FORMATO DE RESPUESTA OBLIGATORIO (Basado en el Reto - Componente 2):
+        1. 📊 RESPUESTA DIRECTA: Un dato estadístico preciso extraído del contexto de datos.
+        2. 💡 INTERPRETACIÓN: Una lectura estratégica del dato. ¿Qué significa esto para el negocio? ¿Cómo ayuda a la retención o al éxito del estudiante? Usa un tono experto y proactivo.
+        
+        RESTRICCIONES:
+        - Si no hay datos sobre la pregunta, dilo honestamente basándote en lo analizado.
+        - Usa solo los siguientes datos del pipeline:
+          - Resumen de Riesgo: {risk_summary}
+          - Hallazgos Críticos: {clean_insights}
+          - Acciones Sugeridas: {clean_decisions}
         """
         
         try:
@@ -52,9 +79,9 @@ class AIChatBot:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_query}
                 ],
-                max_tokens=300,
-                temperature=0.3
+                max_tokens=500,
+                temperature=0.2
             )
             return response.choices[0].message.content
         except Exception as e:
-            return f"Error comunicando con la IA de OpenAI: {str(e)}"
+            return f"❌ Error en el motor de IA: {str(e)}"

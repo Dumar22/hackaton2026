@@ -54,3 +54,29 @@ Demo Final: Muestra cómo el sistema detectó un problema crudo (A) y terminó e
 Ventaja estratégica: Mientras otros equipos estén peleando con Pandas para limpiar sus primeros datos, tú ya habrás pasado por las fases A, B y C en los primeros 10 minutos. ¡Tu ventaja competitiva es el tiempo!
 
 He guardado esta hoja de ruta en docs/ROADMAP_HACKATHON.md para que la tengas a mano. ¿Quieres que te explique cómo ajustar el modelo de IA rápidamente si te dan datos muy diferentes a los esperados?
+
+
+siguientes pasos críticos:
+
+1. Verificar la Calidad de la IA (Stage D y E)
+Con 50,000 registros, los clusters de KMeans deberían verse mucho más definidos.
+
+Qué hacer: Abre el Dashboard y mira la gráfica de "Segmentación". ¿Se ven claramente los 3 grupos (High Performers, Moderate, At Risk)?
+Valor agregado: Si un grupo es muy grande, esto te da un insight real para tu pitch: "Detectamos que el 40% de la población masiva está en riesgo por falta de logins semanales".
+2. Probar el "User Value" (Stage G - Recomendaciones)
+Ahora que tienes datos masivos, prueba el endpoint de usuario individual para ver cómo se comporta con un ID real.
+
+Acción: Elige un ID al azar (ej: el 45000) y verifica qué le recomienda el sistema.
+Endpoint: GET http://localhost:8000/user/45000/stats
+3. El Asistente IA como "Analista de Big Data" (Stage G - Chat)
+Pon a prueba el Chatbot con una pregunta compleja sobre la masa de datos:
+
+"Basado en los 50,000 usuarios procesados, ¿cuál es el patrón de comportamiento más común que lleva al abandono y cómo lo atacamos con una acción de negocio?"
+Por qué: Esto demuestra que la IA no solo lee un archivo, sino que entiende la base de datos completa.
+4. Revisión Técnica en Adminer
+Entra a http://localhost:8080 (Adminer) y asegúrate de que:
+
+La tabla cleaned_events tenga los 150,000 registros.
+La tabla pipeline_executions registre un tiempo de ejecución óptimo (debería ser menos de 1-2 minutos para ese volumen).
+🎨 Sugerencia de Pulido Final (Estética)
+Si ya todo funciona, el último toque es Visual. ¿Te gustaría que añadamos un "Heatmap de Actividad por Hora"? Esto se ve increíble en las presentaciones de hackathon porque muestra cuándo están más activos los estudiantes (ej: picos a las 8 p.m.).

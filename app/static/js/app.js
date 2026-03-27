@@ -177,12 +177,12 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.value = '';
 
         try {
-            const response = await fetch('/pipeline/chat', {
+            const response = await fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: message,
-                    pipeline_context: {
+                    user_query: message,
+                    pipeline_data: {
                         D_model: pipelineContext.D_model,
                         E_insights: pipelineContext.E_insights,
                         F_decisions: pipelineContext.F_decisions

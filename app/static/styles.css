@@ -1,0 +1,306 @@
+:root {
+    /* LIGHT MODE (Default) */
+    --bg-color: #f0f4f8;
+    --card-bg: rgba(255, 255, 255, 0.85);
+    --border-color: rgba(0, 0, 0, 0.12);
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    
+    /* CloudLabs Corporate Colors */
+    --accent: #2c5392; /* Deep Blue from Logo */
+    --accent-light: rgba(44, 83, 146, 0.1);
+    --success: #8bc34a; /* Green from color bar */
+    --warning: #ffca28; /* Yellow from color bar */
+    --danger: #ef4444;
+    --purple: #ab47bc; /* Purple from color bar */
+    --cyan: #29b6f6; /* Light blue from color bar */
+    
+    --glass-shadow: 0 10px 30px rgba(44, 83, 146, 0.08);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] {
+    /* DARK MODE */
+    --bg-color: #0d1117;
+    --card-bg: rgba(22, 27, 34, 0.9);
+    --border-color: rgba(255, 255, 255, 0.15);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --accent-light: rgba(44, 83, 146, 0.3);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* App Layout */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.8rem 1.4rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 4px 15px var(--accent-light);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(44, 83, 146, 0.4);
+    color: white;
+}
+
+/* Grid Layouts */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Cards */
+.card, .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1.8rem;
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(12px);
+    transition: var(--transition);
+}
+
+.card:hover { border-color: var(--accent); }
+
+.stat-card h3 { font-size: 2.5rem; margin: 0.8rem 0; font-weight: 800; color: var(--accent); }
+.label { color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; font-weight: 600; }
+
+.trend { font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; font-weight: 600; }
+.trend.up { color: var(--success); }
+.trend.warning { color: var(--warning); }
+.trend.success { color: var(--success); }
+
+/* AI Insights List */
+.insights-scroll {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-right: 0.5rem;
+}
+
+.badge.ai {
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    margin-left: 0.5rem;
+}
+
+.insight-item {
+    background: var(--card-bg);
+    padding: 1.2rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--accent);
+}
+
+.insight-item.critical { border-left-color: var(--danger); }
+.insight-item.warning { border-left-color: var(--warning); }
+.insight-item.info { border-left-color: var(--success); }
+
+/* Chat Customization */
+.chat-card-full {
+    height: 75vh;
+}
+
+.chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.bot-msg, .user-msg {
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    max-width: 85%;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.bot-msg { 
+    background: var(--card-bg); 
+    border: 1px solid var(--border-color); 
+    color: var(--text-primary); 
+    align-self: flex-start;
+    box-shadow: 0 2px 8px var(--glass-shadow);
+}
+.user-msg { 
+    background: var(--accent); 
+    color: white; 
+    align-self: flex-end; 
+    box-shadow: 0 4px 12px var(--accent-light);
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.chat-input-area input {
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    padding: 1rem 1.5rem;
+    color: var(--text-primary);
+    border-radius: 12px;
+    flex-grow: 1;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+.chat-input-area input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+#sendChatBtn {
+    background: var(--accent);
+    padding: 0 1.5rem;
+    border-radius: 12px;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 1.2rem;
+}
+
+#sendChatBtn:hover {
+    background: #1e3a66;
+    transform: translateY(-2px);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.4); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.8); }
+
+/* -------------------------------------
+ *  Loading Screen Animation (CloudLabs)
+ * ------------------------------------- */
+@keyframes pulseLogo {
+    0% { transform: scale(0.98); opacity: 0.9; }
+    50% { transform: scale(1.02); opacity: 1; filter: drop-shadow(0px 0px 8px var(--accent-light)); }
+    100% { transform: scale(0.98); opacity: 0.9; }
+}
+
+@keyframes slideOutUp {
+    from { transform: translateY(0); opacity: 1; visibility: visible; }
+    to { transform: translateY(-100%); opacity: 0; visibility: hidden; }
+}
+
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-screen.fade-out {
+    animation: slideOutUp 0.8s forwards cubic-bezier(0.8, 0, 0.2, 1);
+}
+
+.logo-animation {
+    animation: pulseLogo 3s infinite ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.cloudlabs-logo-text {
+    font-size: 4rem;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -2px;
+    display: flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.cloudlabs-logo-text span {
+    color: var(--accent);
+}
+
+.cloudlabs-subtitle {
+    font-size: 2rem;
+    font-weight: 400;
+    color: var(--accent);
+    align-self: flex-end;
+    margin-right: 5px;
+    margin-top: -5px;
+    letter-spacing: -1px;
+}
+
+.cloudlabs-color-bar {
+    display: flex;
+    width: 100%;
+    height: 10px;
+    margin-top: 15px;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.color-bar-segment {
+    flex: 1;
+}
+
+.loading-text {
+    margin-top: 40px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    animation: opacityPulse 2s infinite ease-in-out;
+}
+
+@keyframes opacityPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
