@@ -24,29 +24,26 @@ eventos = cargar_csv(EVENTOS)
 productos = cargar_csv(PRODUCTOS)
 interacciones = cargar_csv(INTERACCIONES)
 
-# Limpieza básica de datos
+import limpieza
 
-def limpieza_basica(df, nombre):
-    print(f"\n--- Limpieza básica: {nombre} ---")
-    print(df.info())
-    print("Valores nulos por columna:")
-    print(df.isnull().sum())
-    # Ejemplo: eliminar duplicados
-    df = df.drop_duplicates()
-    # Ejemplo: rellenar NaN en columnas clave
-    if 'edad' in df.columns:
-        df['edad'] = pd.to_numeric(df['edad'], errors='coerce')
-        df['edad'] = df['edad'].fillna(df['edad'].median())
-    if 'genero' in df.columns:
-        df['genero'] = df['genero'].fillna('Sin dato')
-    if 'ciudad' in df.columns:
-        df['ciudad'] = df['ciudad'].fillna('Sin dato')
-    return df
+# Limpieza estructurada de datos por archivo
+dfs_raw = {
+    'usuarios': usuarios,
+    'eventos': eventos,
+    'productos': productos,
+    'interacciones': interacciones
+}
 
-usuarios = limpieza_basica(usuarios, 'usuarios')
-eventos = limpieza_basica(eventos, 'eventos')
-productos = limpieza_basica(productos, 'productos')
-interacciones = limpieza_basica(interacciones, 'interacciones')
+dfs_limpios = limpieza.limpieza_integral(dfs_raw)
+
+usuarios = dfs_limpios['usuarios']
+eventos = dfs_limpios['eventos']
+productos = dfs_limpios['productos']
+interacciones = dfs_limpios['interacciones']
+
+print("\n--- Resultados después de la limpieza ---")
+for nombre, df_l in dfs_limpios.items():
+    print(f"{nombre}: {df_l.shape[0]} filas limpias")
 
 # Exploración rápida
 print("\n--- Exploración rápida de usuarios ---")
