@@ -304,7 +304,7 @@ def run_pipeline(db: Session = Depends(get_db)):
         "stages": result.stages,
     }
 
-@app.post("/pipeline/chat", tags=["AI Chat"])
+@app.post("/chat", tags=["AI Chat"])
 def chat_with_data(request: ChatRequest, db: Session = Depends(get_db)):
     """
     Ask AI questions about the data and the pipeline findings.

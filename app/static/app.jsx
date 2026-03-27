@@ -446,7 +446,7 @@ function DashboardView({ onPipelineComplete, pipelineData }) {
 function AnalysisView({ setActiveView, setMessages, pipelineData }) {
     const [insights, setInsights] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({ title: '', category: '', severity: '' });
+    const [filters, setFilters] = useState({ title: '', category: 'all', severity: 'all' });
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 8;
 
@@ -458,11 +458,12 @@ function AnalysisView({ setActiveView, setMessages, pipelineData }) {
             .finally(() => setLoading(false));
     }, []);
 
-    // Lógica de Filtrado Multicolumna
+    // Lógica de Filtrado Multicolumna (Selects)
     const filtered = insights.filter(i => {
-        return (i.title || '').toLowerCase().includes(filters.title.toLowerCase()) &&
-               (i.category || '').toLowerCase().includes(filters.category.toLowerCase()) &&
-               (i.severity || '').toLowerCase().includes(filters.severity.toLowerCase());
+        const matchTitle = (i.title || '').toLowerCase().includes(filters.title.toLowerCase());
+        const matchCategory = filters.category === 'all' || (i.category || '').toLowerCase() === filters.category.toLowerCase();
+        const matchSeverity = filters.severity === 'all' || (i.severity || '').toLowerCase() === filters.severity.toLowerCase();
+        return matchTitle && matchCategory && matchSeverity;
     });
     
     // Paginación
@@ -472,9 +473,7 @@ function AnalysisView({ setActiveView, setMessages, pipelineData }) {
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
     const askAI = (insight) => {
-        // Formatear pregunta automática
         const question = `¿Qué solución estratégica propones para el hallazgo: "${insight.title}"? Contexto: ${insight.description}`;
-        // Cambiar vista y setear el mensaje inicial (el sistema lo procesará si App esta configurado)
         setMessages(prev => [...prev, { role: 'user', text: question }]);
         setActiveView('chat');
     };
@@ -496,20 +495,31 @@ function AnalysisView({ setActiveView, setMessages, pipelineData }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                     <thead>
                         <tr style={{ background: 'var(--bg-color)', color: 'var(--accent)' }}>
-                            <th style={{ padding: '10px' }}>
+                            <th style={{ padding: '10px', width: '120px' }}>
                                 PRIORIDAD<br/>
-                                <input placeholder="Filtrar..." value={filters.severity} onChange={e => setFilters({...filters, severity: e.target.value})} style={{width: '80%', padding: '4px', fontSize: '0.7rem', marginTop: '5px'}}/>
+                                <select value={filters.severity} onChange={e => setFilters({...filters, severity: e.target.value})} style={{width: '95%', padding: '4px', fontSize: '0.7rem', marginTop: '5px', borderRadius: '4px', background: 'var(--card-bg)', color: 'var(--text-primary)'}}>
+                                    <option value="all">TODAS</option>
+                                    <option value="critical">CRÍTICO</option>
+                                    <option value="warning">ADVERTENCIA</option>
+                                    <option value="info">INFORMATIVO</option>
+                                </select>
                             </th>
-                            <th style={{ padding: '10px' }}>
+                            <th style={{ padding: '10px', width: '140px' }}>
                                 CATEGORÍA<br/>
-                                <input placeholder="Filtrar..." value={filters.category} onChange={e => setFilters({...filters, category: e.target.value})} style={{width: '80%', padding: '4px', fontSize: '0.7rem', marginTop: '5px'}}/>
+                                <select value={filters.category} onChange={e => setFilters({...filters, category: e.target.value})} style={{width: '95%', padding: '4px', fontSize: '0.7rem', marginTop: '5px', borderRadius: '4px', background: 'var(--card-bg)', color: 'var(--text-primary)'}}>
+                                    <option value="all">TODAS</option>
+                                    <option value="risk">RIESGO</option>
+                                    <option value="engagement">ENGAGEMENT</option>
+                                    <option value="behavior">COMPORTAMIENTO</option>
+                                    <option value="strategic">ESTRATÉGICO</option>
+                                </select>
                             </th>
                             <th style={{ padding: '10px' }}>
                                 HALLAZGO<br/>
-                                <input placeholder="Buscar título..." value={filters.title} onChange={e => setFilters({...filters, title: e.target.value})} style={{width: '80%', padding: '4px', fontSize: '0.7rem', marginTop: '5px'}}/>
+                                <input placeholder="Buscar..." value={filters.title} onChange={e => setFilters({...filters, title: e.target.value})} style={{width: '90%', padding: '4px', fontSize: '0.7rem', marginTop: '5px', borderRadius: '4px', background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)'}}/>
                             </th>
                             <th style={{ padding: '10px' }}>DESCRIPCIÓN</th>
-                            <th style={{ padding: '10px' }}>ACCIÓN</th>
+                            <th style={{ padding: '10px', textAlign: 'center' }}>ACCIÓN</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -519,13 +529,13 @@ function AnalysisView({ setActiveView, setMessages, pipelineData }) {
                             return (
                                 <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                     <td style={{ padding: '12px' }}>
-                                        <span style={{ background: style.bg, color: 'white', padding: '3px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.7rem' }}>{style.label}</span>
+                                        <span style={{ background: style.bg, color: 'white', padding: '3px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.7rem', display: 'inline-block', width: '90px', textAlign: 'center' }}>{style.label}</span>
                                     </td>
                                     <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{(ins.category || 'BI').toUpperCase()}</td>
                                     <td style={{ padding: '12px', fontWeight: '600' }}>{ins.title}</td>
                                     <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{ins.description}</td>
                                     <td style={{ padding: '12px', textAlign: 'center' }}>
-                                        <button onClick={() => askAI(ins)} className="btn btn-secondary" style={{ padding: '5px 10px', fontSize: '0.75rem', background: 'var(--accent)', color: 'white' }} title="Obtener solución IA">
+                                        <button onClick={() => askAI(ins)} className="btn btn-secondary" style={{ padding: '5px 10px', fontSize: '0.75rem', background: 'var(--accent)', color: 'white', whiteSpace: 'nowrap' }} title="Obtener solución IA">
                                             <i className="fas fa-bolt"></i> Solución
                                         </button>
                                     </td>
@@ -544,6 +554,7 @@ function AnalysisView({ setActiveView, setMessages, pipelineData }) {
         </div>
     );
 }
+
 
 
 
