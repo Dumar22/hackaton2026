@@ -13,7 +13,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const statTotalUsers = document.getElementById('statTotalUsers');
     const statAvgRisk = document.getElementById('statAvgRisk');
     const statPendingActions = document.getElementById('statPendingActions');
+    const navLinks = document.querySelectorAll('.nav-links a');
+    const sections = document.querySelectorAll('.content-section');
     
+    // 0. Navigation Logic
+    const showSection = (id) => {
+        sections.forEach(s => s.classList.add('hidden'));
+        navLinks.forEach(n => n.classList.remove('active'));
+        
+        const target = document.getElementById(`section-${id}`);
+        if(target) target.classList.remove('hidden');
+        
+        const activeLink = document.querySelector(`.nav-links a[href="#${id}"]`);
+        if(activeLink) activeLink.classList.add('active');
+    };
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = link.getAttribute('href').replace('#', '');
+            showSection(id);
+        });
+    });
+
     let pipelineContext = null; // To store pipeline result for the chat
     let segmentsChart = null;
 

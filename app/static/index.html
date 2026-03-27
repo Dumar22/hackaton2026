@@ -47,70 +47,79 @@
                 </div>
             </header>
 
-            <!-- Dashboard Overview Cards -->
-            <section class="stats-grid">
-                <div class="stat-card">
-                    <span class="label">Usuarios Totales</span>
-                    <h3 id="statTotalUsers">---</h3>
-                    <div class="trend up"><i class="fas fa-users"></i> 500</div>
-                </div>
-                <div class="stat-card">
-                    <span class="label">Riesgo Promedio</span>
-                    <h3 id="statAvgRisk">---</h3>
-                    <div class="trend warning"><i class="fas fa-exclamation-triangle"></i> Media</div>
-                </div>
-                <div class="stat-card">
-                    <span class="label">Acciones Pendientes</span>
-                    <h3 id="statPendingActions">---</h3>
-                    <div class="trend success"><i class="fas fa-check-circle"></i> Listo</div>
-                </div>
-            </section>
-
-            <!-- Middle Section: Visuals -->
-            <section class="visuals-grid">
-                <div class="card chart-container">
-                    <h3>Segmentación de Usuarios (KMeans)</h3>
-                    <canvas id="segmentsChart"></canvas>
-                </div>
-                <div class="card insights-container">
-                    <h3>Top Insights <span class="badge ai">AI Generated</span></h3>
-                    <div id="insightsList" class="insights-scroll">
-                        <p class="empty-state">Ejecuta el pipeline para ver hallazgos.</p>
+            <!-- Seccion DASHBOARD (Por defecto visible) -->
+            <div id="section-dashboard" class="content-section">
+                <!-- Dashboard Overview Cards -->
+                <section class="stats-grid">
+                    <div class="stat-card">
+                        <span class="label">Usuarios Totales</span>
+                        <h3 id="statTotalUsers">---</h3>
+                        <div class="trend up"><i class="fas fa-users"></i> 500</div>
                     </div>
-                </div>
-            </section>
-
-            <!-- Bottom Section: Actions and Data -->
-            <section class="actions-grid">
-                <div class="card actions-feed">
-                    <h3>Decisiones y Acciones Recomendadas</h3>
-                    <div id="actionsTimeline" class="timeline">
-                        <p class="empty-state">No hay acciones registradas.</p>
+                    <div class="stat-card">
+                        <span class="label">Riesgo Promedio</span>
+                        <h3 id="statAvgRisk">---</h3>
+                        <div class="trend warning"><i class="fas fa-exclamation-triangle"></i> Media</div>
                     </div>
-                </div>
-                
-                <!-- Chat Interface -->
-                <div class="card chat-card">
-                    <h3>Pregúntale a la IA <i class="fas fa-sparkles"></i></h3>
-                    <div id="chatMessages" class="chat-messages">
-                        <div class="bot-msg">¡Hola! Soy tu asistente de datos. ¿Qué quieres saber sobre el pipeline?</div>
+                    <div class="stat-card">
+                        <span class="label">Acciones Pendientes</span>
+                        <h3 id="statPendingActions">---</h3>
+                        <div class="trend success"><i class="fas fa-check-circle"></i> Listo</div>
+                    </div>
+                </section>
+
+                <!-- Middle Section: Visuals -->
+                <section class="visuals-grid">
+                    <div class="card chart-container">
+                        <h3>Segmentación de Usuarios (KMeans)</h3>
+                        <canvas id="segmentsChart"></canvas>
+                    </div>
+                    <div class="card insights-container">
+                        <h3>Top Insights <span class="badge ai">AI Generated</span></h3>
+                        <div id="insightsList" class="insights-scroll">
+                            <p class="empty-state">Ejecuta el pipeline para ver hallazgos.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Seccion ACCIONES -->
+            <div id="section-actions" class="content-section hidden">
+                <section class="actions-grid-full">
+                    <div class="card actions-feed">
+                        <h3>Hoja de Ruta de Decisiones</h3>
+                        <div id="actionsTimeline" class="timeline">
+                            <p class="empty-state">No hay acciones registradas.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Seccion CHAT INTEGRADO -->
+            <section id="section-chat" class="content-section hidden">
+                <div class="card chat-card-full">
+                    <h3>Pregúntale a la IA sobre tus datos <i class="fas fa-sparkles"></i></h3>
+                    <div id="chatMessages" class="chat-messages big-chat">
+                        <div class="bot-msg">¡Hola! Soy tu asistente de CloudLabs. Ejecuta el pipeline y pregúntame lo que quieras sobre tus usuarios.</div>
                     </div>
                     <div class="chat-input-area">
-                        <input type="text" id="chatInput" placeholder="Escribe tu pregunta aquí...">
+                        <input type="text" id="chatInput" placeholder="¿Cómo mejorar la retención?">
                         <button id="sendChatBtn"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
             </section>
 
-            <!-- Upload Modal/Section -->
-            <section id="uploadSection" class="card upload-section hidden">
-                <h3>Carga de Archivos</h3>
-                <div class="dropzone" id="dropzone">
-                    <i class="fas fa-file-csv"></i>
-                    <p>Arrastra tus archivos CSV o Haz Click aquí</p>
-                    <input type="file" id="fileInput" hidden accept=".csv">
+            <!-- Seccion UPLOAD (Subir archivos) -->
+            <section id="section-upload" class="content-section hidden">
+                <div class="card upload-section">
+                    <h3>Carga de Archivos Reales</h3>
+                    <div class="dropzone" id="dropzone">
+                        <i class="fas fa-file-csv"></i>
+                        <p>Arrastra tus nuevos archivos CSV aqui o Haz Click</p>
+                        <input type="file" id="fileInput" hidden accept=".csv">
+                    </div>
+                    <div id="uploadStatus"></div>
                 </div>
-                <div id="uploadStatus"></div>
             </section>
 
         </main>
