@@ -32,6 +32,7 @@ from app.engine.models import UserSegmentationModel, AbandonmentRiskModel
 from app.engine.insights import InsightsGenerator
 from app.engine.decisions import DecisionEngine
 from app.engine.actions import BusinessAction
+from app.analysis.adaptive import dynamic_column_mapping
 
 
 # ---------------------------------------------------------------------------
@@ -159,9 +160,21 @@ class DataPipeline:
         for name, fname in files.items():
             path = self.data_dir / fname
             if not path.exists():
-                raise FileNotFoundError(f"Data file not found: {path}")
+                # Búsqueda flexible de archivos por patrón en caso de que el nombre cambie un poco
+                found_files = list(self.data_dir.glob(f"*{name}*.csv"))
+                if found_files:
+                    path = found_files[0]
+                    print(f"   ⚠️ Archivo exacto no hallado, cargando alternativo: {path.name}")
+                else:
+                    raise FileNotFoundError(f"Data file not found: {path} (ni patrones parecidos)")
+            
             df = pd.read_csv(path)
-            print(f"   ↳ {fname}: {df.shape[0]} rows × {df.shape[1]} cols")
+            
+            # Aplicar MAPEO DINAMICO DE COLUMNAS (Punto 2 y 3 del Stage 1)
+            # Esto corrige 'User_ID' -> 'usuario_id', etc.
+            df = dynamic_column_mapping(df, {})
+            
+            print(f"   ↳ {path.name}: {df.shape[0]} rows × {df.shape[1]} cols")
             data[name] = df
         return data
 

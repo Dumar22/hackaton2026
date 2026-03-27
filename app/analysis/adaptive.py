@@ -60,29 +60,38 @@ def load_and_process(path: str, name: Optional[str] = None, export_json: bool = 
 def dynamic_column_mapping(df: pd.DataFrame, expected_types: Dict[str, str]) -> pd.DataFrame:
     """
     Attempts to map the current dataframe columns to expected names 
-    by searching for keywords in column headers.
-    
-    Example: 'user_id', 'usuario', 'Cod_Estudiante' -> 'usuario_id'
+    by searching for keywords in column headers with priority and non-overlap.
     """
     if df.empty: return df
     
+    # Definir mapeo con prioridades y exclusión
+    # Solo mapeamos usuario_id si tiene palabras clave explicitas de usuario
     mappings = {
-        "usuario_id": ["user", "usuario", "id", "cod", "estudiante", "persona"],
+        "usuario_id": ["usuario_id", "user_id", "cod_estudiante", "user", "id_usuario"],
+        "producto_id": ["producto_id", "prod_id", "item_id", "id_producto"],
         "edad": ["edad", "age", "years"],
         "genero": ["genero", "gender", "sex"],
         "ciudad": ["ciudad", "city", "location", "ubica"],
         "fecha": ["fecha", "date", "time", "created"],
-        "tipo_evento": ["evento", "event", "type", "accion", "tipo"]
+        "tipo_evento": ["evento", "event", "tipo_evento"],
+        "accion": ["accion", "status", "action", "behavior"]
     }
     
     new_cols = {}
+    already_mapped = set()
     current_cols = [c.lower() for c in df.columns]
     
     for expected, keywords in mappings.items():
         for i, col in enumerate(current_cols):
-            if any(key in col for key in keywords):
+            # Si el nombre exacto ya existe en el DF real, lo respetamos
+            if df.columns[i] == expected:
+                already_mapped.add(df.columns[i])
+                continue
+                
+            if any(key in col for key in keywords) and df.columns[i] not in already_mapped:
                 new_cols[df.columns[i]] = expected
-                break # Found the first match
+                already_mapped.add(df.columns[i])
+                break # Para este 'expected', ya encontramos su columna
                 
     if new_cols:
         print(f"🔄 Mapeo dinámico aplicado: {new_cols}")

@@ -257,53 +257,58 @@ def run_pipeline(db: Session = Depends(get_db)):
             )
             db.add(db_action)
 
-        # GUARDAR LOS DATOS LIMPIOS (CLEANED DATA) EN TABLAS
-        # Obtenemos los dataframes desde el resultado del pipeline si estuvieran disponibles,
-        # pero como el pipeline actualmente no devuelve los DFs, vamos a obtenerlos del objeto
-        # DataPipeline de nuevo (esto es para la demo, en prod se pasarian los DFs en el result)
+        # GUARDAR LOS DATOS LIMPIOS (CLEANED DATA) EN TABLAS USANDO BULK
+        # Obtenemos los dataframes procesados
         raw_data = pipeline._load_raw()
         clean_data = pipeline._clean(raw_data)
         
-        # Guardar Usuarios Limpios
-        for idx, row in clean_data["usuarios"].iterrows():
-            db.add(db_models.CleanedUser(
+        # 1. Usuarios
+        users_to_save = [
+            db_models.CleanedUser(
                 execution_id=execution.id,
                 usuario_id=int(row["usuario_id"]),
                 edad=float(row["edad"]) if pd.notnull(row["edad"]) else None,
-                genero=str(row["genero"]),
-                ciudad=str(row["ciudad"]),
-                fecha_registro=str(row["fecha_registro"])
-            ))
+                genero=str(row.get("genero", "Desconocido")),
+                ciudad=str(row.get("ciudad", "Desconocida")),
+                fecha_registro=str(row.get("fecha_registro", row.get("fecha", "")))
+            ) for _, row in clean_data["usuarios"].iterrows()
+        ]
+        db.bulk_save_objects(users_to_save)
             
-        # Guardar Eventos Limpios
-        # Limitamos a los primeros 200 para no sobrecargar la BD en el ejemplo
-        for idx, row in clean_data["eventos"].head(200).iterrows():
-            db.add(db_models.CleanedEvent(
+        # 2. Eventos (Proceso masivo sin límite artificial)
+        events_to_save = [
+            db_models.CleanedEvent(
                 execution_id=execution.id,
                 usuario_id=int(row["usuario_id"]),
-                fecha_evento=str(row["fecha_evento"]),
+                fecha_evento=str(row.get("fecha_evento", row.get("fecha", ""))),
                 tipo_evento=str(row["tipo_evento"]),
-                detalle=str(row["detalle"])
-            ))
+                detalle=str(row.get("detalle", ""))
+            ) for _, row in clean_data["eventos"].iterrows()
+        ]
+        db.bulk_save_objects(events_to_save)
 
-        # Guardar Productos Limpios
-        for idx, row in clean_data["productos"].iterrows():
-            db.add(db_models.CleanedProduct(
+        # 3. Productos
+        prods_to_save = [
+            db_models.CleanedProduct(
                 execution_id=execution.id,
                 producto_id=int(row["producto_id"]),
                 nombre=str(row["nombre"]),
                 categoria=str(row["categoria"])
-            ))
+            ) for _, row in clean_data["productos"].iterrows()
+        ]
+        db.bulk_save_objects(prods_to_save)
 
-        # Guardar Interacciones Limpias
-        for idx, row in clean_data["interacciones"].head(200).iterrows():
-            db.add(db_models.CleanedInteraction(
+        # 4. Interacciones
+        ints_to_save = [
+            db_models.CleanedInteraction(
                 execution_id=execution.id,
                 usuario_id=int(row["usuario_id"]),
                 producto_id=int(row["producto_id"]),
                 fecha=str(row["fecha"]),
                 accion=str(row["accion"])
-            ))
+            ) for _, row in clean_data["interacciones"].iterrows()
+        ]
+        db.bulk_save_objects(ints_to_save)
             
         db.commit()
 

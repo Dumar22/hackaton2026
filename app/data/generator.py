@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import random
 import os
 
-def generate_full_dataset(n_users=500, n_interactions=1000, n_events=2000):
+def generate_full_dataset(n_users=50000, n_interactions=100000, n_events=150000):
     np.random.seed(42)
     random.seed(42)
     
@@ -19,7 +19,7 @@ def generate_full_dataset(n_users=500, n_interactions=1000, n_events=2000):
     start_date = datetime(2025, 1, 1)
     
     users_data = {
-        "usuario_id": range(1, n_users + 1),
+        "usuario_id": np.arange(1, n_users + 1),
         "edad": [random.randint(15, 60) if random.random() > 0.05 else np.nan for _ in range(n_users)],
         "genero": [random.choice(generos) for _ in range(n_users)],
         "ciudad": [random.choice(ciudades) if random.random() > 0.1 else "" for _ in range(n_users)],
@@ -46,20 +46,15 @@ def generate_full_dataset(n_users=500, n_interactions=1000, n_events=2000):
     # --- 3. Interacciones (Comportamiento) ---
     accione_types = ["completado", "abandonado", "en_progreso"]
     
+    u_ids = np.random.randint(1, n_users + 1, n_interactions)
+    p_ids = np.random.choice(df_products["producto_id"].values, n_interactions)
+    
     interactions = []
-    for _ in range(n_interactions):
-        u_id = random.randint(1, n_users)
-        p_id = random.choice(df_products["producto_id"].values)
-        
-        # Generar sesgo: usuarios jóvenes tienden a completar más Robótica
-        user_age = df_users.loc[u_id-1, "edad"]
-        prod_cat = df_products.loc[p_id-101, "categoria"]
-        
-        if not np.isnan(user_age) and user_age < 25 and prod_cat == "Robótica":
-            accion = "completado" if random.random() > 0.1 else "abandonado"
-        else:
-            accion = random.choices(accione_types, weights=[0.4, 0.4, 0.2])[0]
-            
+    # Usamos pre-generación para velocidad
+    for i in range(n_interactions):
+        u_id = u_ids[i]
+        p_id = p_ids[i]
+        accion = random.choices(accione_types, weights=[0.4, 0.4, 0.2])[0]
         date = (datetime(2026, 3, 1) + timedelta(days=random.randint(0, 25))).strftime('%Y-%m-%d')
         interactions.append([u_id, p_id, date, accion])
         
@@ -67,18 +62,14 @@ def generate_full_dataset(n_users=500, n_interactions=1000, n_events=2000):
     
     # --- 4. Eventos (Navegación) ---
     event_types = ["login", "simulacion", "descarga_guia", "ver_tutorial"]
-    detalles = {
-        "login": ["web", "mobile", "tablet"],
-        "simulacion": ["inicio", "pausa", "fin"],
-        "descarga_guia": ["pdf", "html"],
-        "ver_tutorial": ["video", "texto"]
-    }
+    detalles = ["web", "mobile", "tablet", "inicio", "pausa", "fin", "pdf", "html", "video", "texto"]
     
+    u_ids_ev = np.random.randint(1, n_users + 1, n_events)
     events = []
-    for _ in range(n_events):
-        u_id = random.randint(1, n_users)
+    for i in range(n_events):
+        u_id = u_ids_ev[i]
         etype = random.choice(event_types)
-        det = random.choice(detalles[etype])
+        det = random.choice(detalles)
         date = (datetime(2026, 3, 1) + timedelta(days=random.randint(0, 25))).strftime('%Y-%m-%d %H:%M:%S')
         events.append([u_id, date, etype, det])
         
@@ -87,7 +78,7 @@ def generate_full_dataset(n_users=500, n_interactions=1000, n_events=2000):
     return df_users, df_products, df_interactions, df_events
 
 if __name__ == "__main__":
-    print("🚀 Generando datos sintéticos para Hackathon 2026...")
+    print("🚀 Generando 50,000 usuarios y 250,000 eventos (Prueba de Estrés)...")
     u, p, i, e = generate_full_dataset()
     
     base_path = os.path.dirname(__file__)

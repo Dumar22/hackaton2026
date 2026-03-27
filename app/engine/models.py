@@ -60,33 +60,47 @@ class UserSegmentationModel(BaseModel):
     def _build_features(self, usuarios: pd.DataFrame, eventos: pd.DataFrame,
                          interacciones: pd.DataFrame) -> pd.DataFrame:
         """Builds a per-user feature matrix from the three datasets."""
+        # --- Detect columns dynamically for robustness ---
+        evt_col = "tipo_evento" if "tipo_evento" in eventos.columns else (eventos.columns[0] if not eventos.empty else "")
+        act_col = "accion" if "accion" in interacciones.columns else (interacciones.columns[-1] if not interacciones.empty else "")
+        
         # --- event counts per user ---
-        login_counts = (
-            eventos[eventos["tipo_evento"] == "login"]
-            .groupby("usuario_id").size().rename("n_logins")
-        )
-        sim_start = (
-            eventos[(eventos["tipo_evento"] == "simulacion") & (eventos["detalle"] == "inicio")]
-            .groupby("usuario_id").size().rename("n_sim_start")
-        )
+        login_counts = pd.Series(0, index=usuarios["usuario_id"].unique())
+        if evt_col in eventos.columns:
+            login_counts = (
+                eventos[eventos[evt_col] == "login"]
+                .groupby("usuario_id").size()
+            )
+            
+        sim_start = pd.Series(0, index=usuarios["usuario_id"].unique())
+        if evt_col in eventos.columns and "detalle" in eventos.columns:
+            sim_start = (
+                eventos[(eventos[evt_col] == "simulacion") & (eventos["detalle"] == "inicio")]
+                .groupby("usuario_id").size()
+            )
 
         # --- interaction outcomes ---
-        completados = (
-            interacciones[interacciones["accion"] == "completado"]
-            .groupby("usuario_id").size().rename("n_completed")
-        )
-        abandonados = (
-            interacciones[interacciones["accion"] == "abandonado"]
-            .groupby("usuario_id").size().rename("n_abandoned")
-        )
+        completados = pd.Series(0, index=usuarios["usuario_id"].unique())
+        if act_col in interacciones.columns:
+            completados = (
+                interacciones[interacciones[act_col] == "completado"]
+                .groupby("usuario_id").size()
+            )
+            
+        abandonados = pd.Series(0, index=usuarios["usuario_id"].unique())
+        if act_col in interacciones.columns:
+            abandonados = (
+                interacciones[interacciones[act_col] == "abandonado"]
+                .groupby("usuario_id").size()
+            )
 
         feat = (
             usuarios[["usuario_id", "edad"]]
             .set_index("usuario_id")
-            .join(login_counts, how="left")
-            .join(sim_start, how="left")
-            .join(completados, how="left")
-            .join(abandonados, how="left")
+            .join(login_counts.rename("n_logins"), how="left")
+            .join(sim_start.rename("n_sim_start"), how="left")
+            .join(completados.rename("n_completed"), how="left")
+            .join(abandonados.rename("n_abandoned"), how="left")
             .fillna(0)
         )
         feat["completion_rate"] = feat["n_completed"] / (

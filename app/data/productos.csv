@@ -1,21 +1,21 @@
 producto_id,nombre,categoria
 101,Física Mecánica I,Ingeniería
-102,Química Orgánica,Salud
-103,Biología Celular,Robótica
-104,Circuitos Eléctricos,Ingeniería
-105,Termodinámica,Salud
+102,Química Orgánica,Robótica
+103,Biología Celular,Gestión Ambiental
+104,Circuitos Eléctricos,Robótica
+105,Termodinámica,STEM
 106,Anatomía Humana,Gestión Ambiental
 107,Microbiología,Robótica
-108,Cálculo Integral,Gestión Ambiental
-109,Energías Renovables,Robótica
+108,Cálculo Integral,Ingeniería
+109,Energías Renovables,STEM
 110,Gestión de Residuos,Robótica
 111,Programación PLC,STEM
-112,Mecatrónica,Robótica
-113,Hidráulica,STEM
-114,Suelos y Pavimentos,Ingeniería
-115,Bioquímica,Robótica
-116,Electromagnetismo,Ingeniería
-117,Estadística Descriptiva,Robótica
-118,Geología,STEM
-119,Botánica,Gestión Ambiental
-120,Física Nuclear,Robótica
+112,Mecatrónica,Salud
+113,Hidráulica,Ingeniería
+114,Suelos y Pavimentos,Robótica
+115,Bioquímica,Gestión Ambiental
+116,Electromagnetismo,STEM
+117,Estadística Descriptiva,Gestión Ambiental
+118,Geología,Gestión Ambiental
+119,Botánica,Robótica
+120,Física Nuclear,Salud
