@@ -3,7 +3,8 @@ Adaptive data loader – supports CSV, Excel, JSON, Parquet and plain text.
 """
 import os
 import pandas as pd
-from typing import Optional
+from typing import Optional, Dict
+import re
 
 
 def load_file(path: str) -> pd.DataFrame:
@@ -54,4 +55,37 @@ def load_and_process(path: str, name: Optional[str] = None, export_json: bool = 
         json_path = os.path.splitext(path)[0] + ".json"
         export_to_json(df, json_path)
 
+    return df
+
+def dynamic_column_mapping(df: pd.DataFrame, expected_types: Dict[str, str]) -> pd.DataFrame:
+    """
+    Attempts to map the current dataframe columns to expected names 
+    by searching for keywords in column headers.
+    
+    Example: 'user_id', 'usuario', 'Cod_Estudiante' -> 'usuario_id'
+    """
+    if df.empty: return df
+    
+    mappings = {
+        "usuario_id": ["user", "usuario", "id", "cod", "estudiante", "persona"],
+        "edad": ["edad", "age", "years"],
+        "genero": ["genero", "gender", "sex"],
+        "ciudad": ["ciudad", "city", "location", "ubica"],
+        "fecha": ["fecha", "date", "time", "created"],
+        "tipo_evento": ["evento", "event", "type", "accion", "tipo"]
+    }
+    
+    new_cols = {}
+    current_cols = [c.lower() for c in df.columns]
+    
+    for expected, keywords in mappings.items():
+        for i, col in enumerate(current_cols):
+            if any(key in col for key in keywords):
+                new_cols[df.columns[i]] = expected
+                break # Found the first match
+                
+    if new_cols:
+        print(f"🔄 Mapeo dinámico aplicado: {new_cols}")
+        return df.rename(columns=new_cols)
+        
     return df

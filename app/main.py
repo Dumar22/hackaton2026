@@ -337,6 +337,36 @@ def get_all_insights(db: Session = Depends(get_db)):
     return db.query(db_models.InsightModel).order_by(db_models.InsightModel.timestamp.desc()).all()
 
 
+# ---------------------------------------------------------------------------
+# User specific endpoints
+# ---------------------------------------------------------------------------
+@app.get("/user/{user_id}/stats", tags=["User"])
+def get_user_stats(user_id: int):
+    """
+    Returns statistics and recommendations for a single user.
+    """
+    data_dir = settings.DATA_DIR
+    ints_path = data_dir / "interacciones.csv"
+    if not ints_path.exists():
+        return {"error": "Interactions data not found"}
+        
+    df_ints = pd.read_csv(ints_path)
+    user_data = df_ints[df_ints["usuario_id"] == user_id]
+    
+    if user_data.empty:
+        return {"message": "No data found for this user", "user_id": user_id}
+        
+    stats = {
+        "user_id": user_id,
+        "total_interactions": len(user_data),
+        "completions": len(user_data[user_data["accion"] == "completado"]),
+        "abandonments": len(user_data[user_data["accion"] == "abandonado"]),
+        "completion_rate": (len(user_data[user_data["accion"] == "completado"]) / len(user_data)) * 100 if len(user_data) > 0 else 0
+    }
+    
+    return stats
+
+
 @app.get("/pipeline/status", tags=["Pipeline"])
 def pipeline_status():
     """Returns the list of pipeline stages and their descriptions."""
