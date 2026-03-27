@@ -1,44 +1,29 @@
 version: '3.8'
 
 services:
-  # Base de datos PostgreSQL
   db:
     image: postgres:15-alpine
-    container_name: hackathon_db
+    container_name: cloudlabs_db
     restart: always
     environment:
-      POSTGRES_USER: hack_user
-      POSTGRES_PASSWORD: hack_password
-      POSTGRES_DB: ai_project_db
+      - POSTGRES_USER=dumar_admin
+      - POSTGRES_PASSWORD=cloudlabs_secure_pass
+      - POSTGRES_DB=cloudlabs_production
     ports:
-      - "5432:5432"
+      - "5444:5432" # Mapeado al 5444 para no chocar con tu Postgres actual
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # Interfaz Web para ver la base de datos (TABLAS LIMPIAS)
-  # Entra en: http://localhost:8080 para ver los datos limpios
-  adminer:
-    image: adminer
-    container_name: hackathon_adminer
-    restart: always
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-
-  # La Aplicación FastAPI
-  api:
+  app:
     build: .
-    container_name: hackathon_api
+    container_name: cloudlabs_app
     restart: always
-    environment:
-      - DATABASE_URL=postgresql://hack_user:hack_password@db:5432/ai_project_db
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
     ports:
-      - "8000:8000"
-    volumes:
-      - ./app:/app/app
-      - ./app/data:/app/app/data
+      - "8001:8000" # Accede vía http://[IP-DEL-SERVIDOR]:8001
+    environment:
+      - DATABASE_URL=postgresql://dumar_admin:cloudlabs_secure_pass@db:5432/cloudlabs_production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATA_DIR=/app/data
     depends_on:
       - db
 

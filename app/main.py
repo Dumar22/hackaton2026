@@ -7,7 +7,7 @@ Run with:
 Or directly:
     python -m app.main
 """
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import io
@@ -22,7 +22,6 @@ from app.core.database import engine, SessionLocal, get_db
 from app.engine import db_models
 from app.engine.bot import AIChatBot
 from sqlalchemy.orm import Session
-from fastapi import Depends
 from pydantic import BaseModel as PydanticBaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -369,20 +368,22 @@ def get_chat_history(db: Session = Depends(get_db)):
 @app.post("/chat/clear", tags=["AI Chat / Admin"])
 async def hard_reset_system(db: Session = Depends(get_db)):
     """
-    PERFORMS A HARD RESET: Deletes ALL data (Chat, Insights, Actions, Cleaned Data).
+    PERFORMS A HARD RESET: Deletes ALL data respecting Foreign Key constraints.
     """
     try:
-        # Delete in order of dependencies (Foreign Keys)
+        # 1. Independent models
         db.query(db_models.ChatMessageModel).delete()
+        
+        # 2. Children models (FK to PipelineExecution)
         db.query(db_models.InsightModel).delete()
         db.query(db_models.ActionLogModel).delete()
-        db.query(db_models.PipelineExecution).delete()
-        
-        # Cleaned Datasets
         db.query(db_models.CleanedUser).delete()
         db.query(db_models.CleanedEvent).delete()
         db.query(db_models.CleanedProduct).delete()
         db.query(db_models.CleanedInteraction).delete()
+        
+        # 3. Parent model
+        db.query(db_models.PipelineExecution).delete()
         
         db.commit()
         return {"status": "success", "message": "¡Sistema CloudLabs reseteado a cero! Listo para nueva ingesta."}
