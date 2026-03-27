@@ -1,4 +1,21 @@
 producto_id,nombre,categoria
-101,Simulación Física,STEM
-102,Simulación Química,STEM
-103,Simulación Biología,STEM
+101,Física Mecánica I,Ingeniería
+102,Química Orgánica,Salud
+103,Biología Celular,Robótica
+104,Circuitos Eléctricos,Ingeniería
+105,Termodinámica,Salud
+106,Anatomía Humana,Gestión Ambiental
+107,Microbiología,Robótica
+108,Cálculo Integral,Gestión Ambiental
+109,Energías Renovables,Robótica
+110,Gestión de Residuos,Robótica
+111,Programación PLC,STEM
+112,Mecatrónica,Robótica
+113,Hidráulica,STEM
+114,Suelos y Pavimentos,Ingeniería
+115,Bioquímica,Robótica
+116,Electromagnetismo,Ingeniería
+117,Estadística Descriptiva,Robótica
+118,Geología,STEM
+119,Botánica,Gestión Ambiental
+120,Física Nuclear,Robótica

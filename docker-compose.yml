@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: hackathon_db
+    restart: always
+    environment:
+      POSTGRES_USER: hack_user
+      POSTGRES_PASSWORD: hack_password
+      POSTGRES_DB: ai_project_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Interfaz Web para ver la base de datos (TABLAS LIMPIAS)
+  # Entra en: http://localhost:8080 para ver los datos limpios
+  adminer:
+    image: adminer
+    container_name: hackathon_adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  # La Aplicación FastAPI
+  api:
+    build: .
+    container_name: hackathon_api
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://hack_user:hack_password@db:5432/ai_project_db
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./app/data:/app/app/data
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

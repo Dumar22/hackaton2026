@@ -18,6 +18,23 @@ from app.cleaners import CSVCleaner, ExcelCleaner
 from app.analysis.exploratory import ExploratoryAnalysis
 from app.analysis.adaptive import load_and_process
 from app.pipeline import DataPipeline
+from app.core.database import engine, SessionLocal, get_db
+from app.engine import db_models
+from app.engine.bot import AIChatBot
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from pydantic import BaseModel as PydanticBaseModel
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+# Initialize database tables
+db_models.Base.metadata.create_all(bind=engine)
+
+# Request schemas
+class ChatRequest(PydanticBaseModel):
+    message: str
+    pipeline_context: dict = {} # Default to empty dict if not provided
 
 # ---------------------------------------------------------------------------
 # App instance
@@ -45,9 +62,16 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
-@app.get("/", tags=["Health"])
-def root():
-    return {"status": "ok", "app": "Hackathon 2026 API", "version": "0.1.0"}
+# ---------------------------------------------------------------------------
+# Static Files & Frontend
+# ---------------------------------------------------------------------------
+# Mount the static directory
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+@app.get("/", tags=["UI"])
+def serve_index():
+    """Serves the main dashboard HTML."""
+    return FileResponse("app/static/index.html")
 
 
 @app.get("/health", tags=["Health"])
@@ -178,7 +202,7 @@ async def explore_upload(file: UploadFile = File(...)):
 # Pipeline endpoint – full A→G flow
 # ---------------------------------------------------------------------------
 @app.post("/pipeline/run", tags=["Pipeline"])
-def run_pipeline():
+def run_pipeline(db: Session = Depends(get_db)):
     """
     Executes the complete data intelligence pipeline on the built-in sample datasets:
 
@@ -188,12 +212,129 @@ def run_pipeline():
     """
     pipeline = DataPipeline(data_dir=settings.DATA_DIR)
     result = pipeline.run()
+    
+    if result.success:
+        # Save execution summary
+        execution = db_models.PipelineExecution(
+            duration_ms=result.duration_ms,
+            status="success"
+        )
+        db.add(execution)
+        db.commit()
+        db.refresh(execution)
+        
+        # Save insights
+        insights = result.stages.get("E_insights", {}).get("insights", [])
+        for i in insights:
+            # Aseguramos que metric sea un float nativo de Python (no np.float64)
+            metric_val = i.get("metric")
+            if hasattr(metric_val, "item"): # Si es un tipo de numpy
+                metric_val = metric_val.item()
+            elif metric_val is not None:
+                metric_val = float(metric_val)
+
+            db_insight = db_models.InsightModel(
+                execution_id=execution.id,
+                category=i.get("category"),
+                severity=i.get("severity"),
+                title=i.get("title"),
+                description=i.get("description"),
+                affected_users=i.get("affected_users"),
+                metric=metric_val
+            )
+            db.add(db_insight)
+            
+        # Save actions
+        actions = result.stages.get("G_actions", {}).get("actions", [])
+        for a in actions:
+            db_action = db_models.ActionLogModel(
+                execution_id=execution.id,
+                action_type=a.get("action_type"),
+                priority=a.get("priority"),
+                status=a.get("status"),
+                summary=a.get("summary"),
+                details=a.get("details", {})
+            )
+            db.add(db_action)
+
+        # GUARDAR LOS DATOS LIMPIOS (CLEANED DATA) EN TABLAS
+        # Obtenemos los dataframes desde el resultado del pipeline si estuvieran disponibles,
+        # pero como el pipeline actualmente no devuelve los DFs, vamos a obtenerlos del objeto
+        # DataPipeline de nuevo (esto es para la demo, en prod se pasarian los DFs en el result)
+        raw_data = pipeline._load_raw()
+        clean_data = pipeline._clean(raw_data)
+        
+        # Guardar Usuarios Limpios
+        for idx, row in clean_data["usuarios"].iterrows():
+            db.add(db_models.CleanedUser(
+                execution_id=execution.id,
+                usuario_id=int(row["usuario_id"]),
+                edad=float(row["edad"]) if pd.notnull(row["edad"]) else None,
+                genero=str(row["genero"]),
+                ciudad=str(row["ciudad"]),
+                fecha_registro=str(row["fecha_registro"])
+            ))
+            
+        # Guardar Eventos Limpios
+        # Limitamos a los primeros 200 para no sobrecargar la BD en el ejemplo
+        for idx, row in clean_data["eventos"].head(200).iterrows():
+            db.add(db_models.CleanedEvent(
+                execution_id=execution.id,
+                usuario_id=int(row["usuario_id"]),
+                fecha_evento=str(row["fecha_evento"]),
+                tipo_evento=str(row["tipo_evento"]),
+                detalle=str(row["detalle"])
+            ))
+
+        # Guardar Productos Limpios
+        for idx, row in clean_data["productos"].iterrows():
+            db.add(db_models.CleanedProduct(
+                execution_id=execution.id,
+                producto_id=int(row["producto_id"]),
+                nombre=str(row["nombre"]),
+                categoria=str(row["categoria"])
+            ))
+
+        # Guardar Interacciones Limpias
+        for idx, row in clean_data["interacciones"].head(200).iterrows():
+            db.add(db_models.CleanedInteraction(
+                execution_id=execution.id,
+                usuario_id=int(row["usuario_id"]),
+                producto_id=int(row["producto_id"]),
+                fecha=str(row["fecha"]),
+                accion=str(row["accion"])
+            ))
+            
+        db.commit()
+
     return {
         "success": result.success,
+        "execution_id": execution.id if result.success else None,
         "duration_ms": result.duration_ms,
         "error": result.error,
         "stages": result.stages,
     }
+
+@app.post("/pipeline/chat", tags=["AI Chat"])
+def chat_with_data(request: ChatRequest):
+    """
+    Ask Gemini questions about the data and the pipeline findings.
+    Requires a valid GEMINI_API_KEY in .env.
+    """
+    bot = AIChatBot()
+    response = bot.chat(request.message, request.pipeline_context)
+    return {"response": response}
+
+@app.get("/pipeline/history", tags=["Pipeline"])
+def get_pipeline_history(db: Session = Depends(get_db), limit: int = 10):
+    """Returns a list of past pipeline executions and insights."""
+    executions = db.query(db_models.PipelineExecution).order_by(db_models.PipelineExecution.timestamp.desc()).limit(limit).all()
+    return executions
+
+@app.get("/pipeline/insights/all", tags=["Pipeline"])
+def get_all_insights(db: Session = Depends(get_db)):
+    """Returns all insights stored in the database."""
+    return db.query(db_models.InsightModel).order_by(db_models.InsightModel.timestamp.desc()).all()
 
 
 @app.get("/pipeline/status", tags=["Pipeline"])
