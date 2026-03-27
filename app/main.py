@@ -255,61 +255,45 @@ def run_pipeline(db: Session = Depends(get_db)):
                 summary=a.get("summary"),
                 details=a.get("details", {})
             )
-            db.add(db_action)
+                 # ── GUARDAR DATOS LIMPIOS CON MOTOR UPSERT DE ALTA VELOCIDAD ──
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        clean_data = result.stages.get("_raw_clean_dfs", {})
 
-        # GUARDAR LOS DATOS LIMPIOS (CLEANED DATA) EN TABLAS USANDO BULK
-        # Obtenemos los dataframes procesados
-        raw_data = pipeline._load_raw()
-        clean_data = pipeline._clean(raw_data)
+        # A. Usuarios (Upsert por usuario_id)
+        users_df = clean_data.get("usuarios", pd.DataFrame())
+        if not users_df.empty:
+            data = users_df.assign(execution_id=execution.id).to_dict(orient="records")
+            for chunk in [data[i:i + 1000] for i in range(0, len(data), 1000)]:
+                stmt = pg_insert(db_models.CleanedUser).values(chunk)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["usuario_id"],
+                    set_={c.name: c for c in stmt.excluded if c.name not in ["id", "usuario_id"]}
+                )
+                db.execute(stmt)
+
+        # B. Productos (Upsert por producto_id)
+        prods_df = clean_data.get("productos", pd.DataFrame())
+        if not prods_df.empty:
+            data = prods_df.assign(execution_id=execution.id).to_dict(orient="records")
+            for chunk in [data[i:i + 1000] for i in range(0, len(data), 1000)]:
+                stmt = pg_insert(db_models.CleanedProduct).values(chunk)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["producto_id"],
+                    set_={c.name: c for c in stmt.excluded if c.name not in ["id", "producto_id"]}
+                )
+                db.execute(stmt)
+
+        # C. Eventos e Interacciones (Append optimizado)
+        # Para tablas masivas de series temporales, usamos bulk_insert_mappings
+        for key, model in [("eventos", db_models.CleanedEvent), ("interacciones", db_models.CleanedInteraction)]:
+            df_to_save = clean_data.get(key, pd.DataFrame())
+            if not df_to_save.empty:
+                data = df_to_save.assign(execution_id=execution.id).to_dict(orient="records")
+                for chunk in [data[i:i + 1000] for i in range(0, len(data), 1000)]:
+                    db.bulk_insert_mappings(model, chunk)
         
-        # 1. Usuarios
-        users_to_save = [
-            db_models.CleanedUser(
-                execution_id=execution.id,
-                usuario_id=int(row["usuario_id"]),
-                edad=float(row["edad"]) if pd.notnull(row["edad"]) else None,
-                genero=str(row.get("genero", "Desconocido")),
-                ciudad=str(row.get("ciudad", "Desconocida")),
-                fecha_registro=str(row.get("fecha_registro", row.get("fecha", "")))
-            ) for _, row in clean_data["usuarios"].iterrows()
-        ]
-        db.bulk_save_objects(users_to_save)
-            
-        # 2. Eventos (Proceso masivo sin límite artificial)
-        events_to_save = [
-            db_models.CleanedEvent(
-                execution_id=execution.id,
-                usuario_id=int(row["usuario_id"]),
-                fecha_evento=str(row.get("fecha_evento", row.get("fecha", ""))),
-                tipo_evento=str(row["tipo_evento"]),
-                detalle=str(row.get("detalle", ""))
-            ) for _, row in clean_data["eventos"].iterrows()
-        ]
-        db.bulk_save_objects(events_to_save)
-
-        # 3. Productos
-        prods_to_save = [
-            db_models.CleanedProduct(
-                execution_id=execution.id,
-                producto_id=int(row["producto_id"]),
-                nombre=str(row["nombre"]),
-                categoria=str(row["categoria"])
-            ) for _, row in clean_data["productos"].iterrows()
-        ]
-        db.bulk_save_objects(prods_to_save)
-
-        # 4. Interacciones
-        ints_to_save = [
-            db_models.CleanedInteraction(
-                execution_id=execution.id,
-                usuario_id=int(row["usuario_id"]),
-                producto_id=int(row["producto_id"]),
-                fecha=str(row["fecha"]),
-                accion=str(row["accion"])
-            ) for _, row in clean_data["interacciones"].iterrows()
-        ]
-        db.bulk_save_objects(ints_to_save)
-            
+        db.commit()
+  
         db.commit()
 
     return {
@@ -321,20 +305,52 @@ def run_pipeline(db: Session = Depends(get_db)):
     }
 
 @app.post("/pipeline/chat", tags=["AI Chat"])
-def chat_with_data(request: ChatRequest):
+def chat_with_data(request: ChatRequest, db: Session = Depends(get_db)):
     """
-    Ask Gemini questions about the data and the pipeline findings.
-    Requires a valid GEMINI_API_KEY in .env.
+    Ask AI questions about the data and the pipeline findings.
     """
+    # 1. Save User Message
+    user_msg = db_models.ChatMessageModel(role="user", content=request.message)
+    db.add(user_msg)
+    
     bot = AIChatBot()
     response = bot.chat(request.message, request.pipeline_context)
+    
+    # 2. Save Bot Response
+    bot_msg = db_models.ChatMessageModel(role="bot", content=response)
+    db.add(bot_msg)
+    db.commit()
+    
     return {"response": response}
 
-@app.get("/pipeline/history", tags=["Pipeline"])
-def get_pipeline_history(db: Session = Depends(get_db), limit: int = 10):
-    """Returns a list of past pipeline executions and insights."""
-    executions = db.query(db_models.PipelineExecution).order_by(db_models.PipelineExecution.timestamp.desc()).limit(limit).all()
-    return executions
+@app.get("/chat/history", tags=["AI Chat"])
+def get_chat_history(db: Session = Depends(get_db)):
+    """Returns the stored conversation history."""
+    messages = db.query(db_models.ChatMessageModel).order_by(db_models.ChatMessageModel.timestamp.asc()).all()
+    # Map to the format React expects { role, text }
+    return [{"role": m.role, "text": m.content} for m in messages]
+
+@app.get("/pipeline/latest_results", tags=["Pipeline"])
+def get_latest_pipeline_results(db: Session = Depends(get_db)):
+    """Recupera la última ejecución con todos sus detalles para cargar el Dashboard al inicio."""
+    execution = db.query(db_models.PipelineExecution).order_by(db_models.PipelineExecution.timestamp.desc()).first()
+    if not execution:
+        return {"success": False, "message": "No hay ejecuciones previas."}
+    
+    insights = db.query(db_models.InsightModel).filter_by(execution_id=execution.id).all()
+    actions = db.query(db_models.ActionLogModel).filter_by(execution_id=execution.id).all()
+    
+    # Intentamos obtener un resumen de riesgo/usuarios para el dashboard
+    user_count = db.query(db_models.CleanedUser).count()
+    
+    return {
+        "success": True,
+        "stages": {
+            "D_model": {"users_analysed": user_count},
+            "E_insights": {"insights": [{"title": i.title, "description": i.description, "metric": i.metric, "severity": i.severity, "category": i.category} for i in insights]},
+            "G_actions": {"actions": [{"action_type": a.action_type, "summary": a.summary} for a in actions]}
+        }
+    }
 
 @app.get("/pipeline/insights/all", tags=["Pipeline"])
 def get_all_insights(db: Session = Depends(get_db)):

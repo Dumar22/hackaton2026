@@ -263,10 +263,7 @@ function UploadView() {
     );
 }
 
-function ChatView({ pipelineData }) {
-    const [messages, setMessages] = useState([
-        { role: 'bot', text: '¡Bienvenido(a) a CloudLabs AI Intelligence! Ejecuta el pipeline en Dashboard para precargar los datos, y luego consúltame lo que necesites.' }
-    ]);
+function ChatView({ pipelineData, messages, setMessages, clearChat }) {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef(null);
@@ -277,18 +274,21 @@ function ChatView({ pipelineData }) {
 
     useEffect(() => {
         scrollToBottom();
+        // AUTO-DISPARO: Si el último mensaje es del usuario y no estamos ya cargando
+        if (messages.length > 0 && messages[messages.length - 1].role === 'user' && !loading) {
+            const lastMessage = messages[messages.length - 1];
+            // Para evitar re-disparos infinitos, solo disparamos si el mensaje es 'fresco'
+            // (En este caso, ChatView siempre se vuelve a renderizar con nuevos messages)
+            triggerChat(lastMessage.text);
+        }
     }, [messages]);
 
-    const sendMessage = async () => {
-        if (!input.trim() || loading) return;
-        
-        const userText = input.trim();
-        setMessages(prev => [...prev, { role: 'user', text: userText }]);
-        setInput('');
+    const triggerChat = async (userText) => {
+        if (loading) return;
         setLoading(true);
 
         try {
-            const res = await fetch('/pipeline/chat', {
+            const res = await fetch('/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -297,20 +297,33 @@ function ChatView({ pipelineData }) {
                 })
             });
             const data = await res.json();
-            setMessages(prev => [...prev, { role: 'bot', text: data.response || "No context match." }]);
+            setMessages(prev => [...prev, { role: 'bot', text: data.response || "IA analizando... por favor intenta de nuevo." }]);
         } catch (error) {
             console.error(error);
-            setMessages(prev => [...prev, { role: 'bot', text: "Ocurrió un error conectando con el motor AI de CloudLabs." }]);
+            setMessages(prev => [...prev, { role: 'bot', text: "Error de conexión con el motor CloudLabs AI." }]);
         } finally {
             setLoading(false);
         }
     };
 
+    const handleSendMessage = () => {
+        if (!input.trim()) return;
+        const text = input.trim();
+        setMessages(prev => [...prev, { role: 'user', text }]);
+        setInput('');
+        // No llamamos a triggerChat aquí, el useEffect lo hará al detectar el cambio en messages
+    };
+
     return (
         <div className="card chat-card-full" style={{ display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', color: 'var(--accent)' }}>
-                Asistente Virtual IA <i className="fas fa-sparkles" style={{color: 'var(--success)', marginLeft: '8px'}}></i>
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                <h3 style={{ color: 'var(--accent)' }}>
+                    Asistente Virtual IA <i className="fas fa-sparkles" style={{color: 'var(--success)', marginLeft: '8px'}}></i>
+                </h3>
+                <button onClick={clearChat} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem' }} title="Limpiar pantalla">
+                    <i className="fas fa-eraser"></i> Limpiar Sesión
+                </button>
+            </div>
             
             <div className="chat-messages big-chat" style={{ flexGrow: 1, padding: '10px 5px' }}>
                 {messages.map((msg, i) => (
@@ -328,11 +341,11 @@ function ChatView({ pipelineData }) {
                     type="text" 
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="E.g: Resume las acciones preventivas frente a altas deserciones..." 
                     autoFocus
                 />
-                <button id="sendChatBtn" onClick={sendMessage} disabled={loading} style={{ opacity: loading ? 0.5 : 1 }}>
+                <button id="sendChatBtn" onClick={handleSendMessage} disabled={loading} style={{ opacity: loading ? 0.5 : 1 }}>
                     <i className="fas fa-paper-plane"></i>
                 </button>
             </div>
@@ -340,7 +353,7 @@ function ChatView({ pipelineData }) {
     );
 }
 
-function DashboardView({ onPipelineComplete }) {
+function DashboardView({ onPipelineComplete, pipelineData }) {
     const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);
     const [pipelineStatus, setPipelineStatus] = useState("");
@@ -373,6 +386,8 @@ function DashboardView({ onPipelineComplete }) {
     const totalEvents = summary?.["eventos.csv"]?.rows || "---";
     const totalInteractions = summary?.["interacciones.csv"]?.rows || "---";
 
+    const dashboardInsights = pipelineData?.E_insights?.insights?.slice(0, 3) || [];
+
     return (
         <div id="section-dashboard">
             <section className="stats-grid">
@@ -381,7 +396,7 @@ function DashboardView({ onPipelineComplete }) {
                     <h3>{loading ? '...' : totalUsers}</h3>
                     <div className="trend up"><i className="fas fa-circle-check"></i> Activos</div>
                 </div>
-                <div className="stat-card">
+                <div className="stat-card" style={{ borderLeft: '3px solid var(--accent)' }}>
                     <span className="label">Eventos Históricos</span>
                     <h3>{loading ? '...' : totalEvents}</h3>
                     <div className="trend warning"><i className="fas fa-server"></i> Registros</div>
@@ -393,29 +408,47 @@ function DashboardView({ onPipelineComplete }) {
                 </div>
             </section>
             
-            <div className="card">
-                <h3 style={{color: 'var(--accent)'}}>Sistema de Recomendación y Acción</h3>
-                {loading ? <p>Recopilando estadísticas...</p> : (
-                    <div style={{ marginTop: '1rem' }}>
-                        <p style={{ lineHeight: 1.6 }}>
-                            Los conjuntos de datos fuente han sido detectados en el sistema de CloudLabs. Puede proceder a ejecutarlos mediante nuestro 
-                            motor de Machine Learning que limpiará el ruido y generará correlaciones predictivas. Una vez procesado, visite <strong>Análisis IA</strong>.
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
+                <div className="card">
+                    <h3 style={{color: 'var(--accent)', marginBottom: '1rem'}}><i className="fas fa-play-circle"></i> Ejecución de Pipeline</h3>
+                    <p style={{ lineHeight: 1.6, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        El motor de Machine Learning de CloudLabs procesará los datos para detectar patrones de abandono y éxito. 
+                    </p>
+                    <br/>
+                    <button className="btn btn-primary" onClick={runPipeline} style={{ width: '100%' }}>
+                        Iniciar Análisis IA Global
+                    </button>
+                    {pipelineStatus && <p style={{ marginTop: '15px', color: 'var(--success)', fontWeight: 'bold', fontSize: '0.85rem' }}>{pipelineStatus}</p>}
+                </div>
+
+                <div className="card">
+                    <h3 style={{color: 'var(--accent)', marginBottom: '1rem'}}><i className="fas fa-bolt"></i> Analítica en Tiempo Real</h3>
+                    {dashboardInsights.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                            {dashboardInsights.map((insight, idx) => (
+                                <div key={idx} style={{ padding: '0.6rem', background: 'var(--bg-color)', borderRadius: '6px', borderLeft: '4px solid var(--accent)' }}>
+                                    <strong style={{ fontSize: '0.85rem', display: 'block' }}>{insight.title}</strong>
+                                    <small style={{ color: 'var(--text-secondary)' }}>{insight.description.substring(0, 80)}...</small>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', marginTop: '1rem' }}>
+                            Esperando datos del pipeline...
                         </p>
-                        <br/>
-                        <button className="btn btn-primary" onClick={runPipeline}>
-                            <i className="fas fa-play-circle"></i> Ejecutar IA Pipeline Global
-                        </button>
-                        {pipelineStatus && <p style={{ marginTop: '15px', color: 'var(--success)', fontWeight: 'bold' }}>{pipelineStatus}</p>}
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );
 }
 
-function AnalysisView() {
+function AnalysisView({ setActiveView, setMessages, pipelineData }) {
     const [insights, setInsights] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filters, setFilters] = useState({ title: '', category: '', severity: '' });
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 8;
 
     useEffect(() => {
         fetch('/pipeline/insights/all')
@@ -425,44 +458,127 @@ function AnalysisView() {
             .finally(() => setLoading(false));
     }, []);
 
+    // Lógica de Filtrado Multicolumna
+    const filtered = insights.filter(i => {
+        return (i.title || '').toLowerCase().includes(filters.title.toLowerCase()) &&
+               (i.category || '').toLowerCase().includes(filters.category.toLowerCase()) &&
+               (i.severity || '').toLowerCase().includes(filters.severity.toLowerCase());
+    });
+    
+    // Paginación
+    const indexOfLast = currentPage * itemsPerPage;
+    const indexOfFirst = indexOfLast - itemsPerPage;
+    const currentItems = filtered.slice(indexOfFirst, indexOfLast);
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+    const askAI = (insight) => {
+        // Formatear pregunta automática
+        const question = `¿Qué solución estratégica propones para el hallazgo: "${insight.title}"? Contexto: ${insight.description}`;
+        // Cambiar vista y setear el mensaje inicial (el sistema lo procesará si App esta configurado)
+        setMessages(prev => [...prev, { role: 'user', text: question }]);
+        setActiveView('chat');
+    };
+
+    const getSeverityStyle = (s) => {
+        const sev = (s || '').toLowerCase();
+        if (sev === 'critical') return { bg: '#ff4d4f', label: 'CRÍTICO' };
+        if (sev === 'warning') return { bg: '#faad14', label: 'ADVERTENCIA' };
+        return { bg: '#1890ff', label: 'INFORMATIVO' };
+    };
+
     return (
-        <div className="card insights-container" style={{ minHeight: '60vh' }}>
-            <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', color: 'var(--accent)' }}>
-                Recomendaciones CloudLabs Inteligentes <span className="badge ai">AI Generated</span>
+        <div className="card" style={{ minHeight: '75vh', padding: '1.5rem' }}>
+            <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.5rem', color: 'var(--accent)' }}>
+                Consola IA de Hallazgos y Soluciones <i className="fas fa-microchip" style={{marginLeft: '10px'}}></i>
             </h3>
-            <div className="insights-scroll" style={{ maxHeight: 'none', paddingRight: '1rem' }}>
-                {loading ? <p><i className="fas fa-spinner fa-spin"></i> Accediendo al Knowledge Graph...</p> : 
-                    insights.length === 0 ? (
-                        <div className="empty-state" style={{ marginTop: '3rem' }}>
-                            <i className="fas fa-chart-network" style={{ fontSize: '3.5rem', marginBottom: '1rem', color: 'var(--accent-light)' }}></i>
-                            <p style={{color: 'var(--accent)', fontWeight: 600}}>Cámara de Conocimiento Vacía</p>
-                            <p style={{ fontSize: '0.9rem', marginTop: '10px' }}>Debes ejecutar el Pipeline Computacional Global en tu panel de Dashboard para nutrir esta cámara.</p>
-                        </div>
-                    ) :
-                    insights.map((insight, idx) => (
-                        <div key={idx} className={`insight-item ${insight.severity || 'info'}`} style={{ marginBottom: '1rem' }}>
-                            <h4 style={{ color: 'var(--accent)', fontSize: '1.1rem' }}>{insight.title}</h4>
-                            <p style={{ margin: '0.6rem 0', color: 'var(--text-primary)' }}>{insight.description}</p>
-                            {insight.metric && (
-                                <div style={{ marginTop: '10px', display: 'inline-block', background: 'var(--accent-light)', padding: '4px 10px', borderRadius: '4px' }}>
-                                    <small style={{ color: 'var(--accent)', fontWeight: '600' }}>
-                                         Métrica: {insight.metric}
-                                    </small>
-                                </div>
-                            )}
-                        </div>
-                    ))
-                }
+
+            <div className="table-responsive">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                        <tr style={{ background: 'var(--bg-color)', color: 'var(--accent)' }}>
+                            <th style={{ padding: '10px' }}>
+                                PRIORIDAD<br/>
+                                <input placeholder="Filtrar..." value={filters.severity} onChange={e => setFilters({...filters, severity: e.target.value})} style={{width: '80%', padding: '4px', fontSize: '0.7rem', marginTop: '5px'}}/>
+                            </th>
+                            <th style={{ padding: '10px' }}>
+                                CATEGORÍA<br/>
+                                <input placeholder="Filtrar..." value={filters.category} onChange={e => setFilters({...filters, category: e.target.value})} style={{width: '80%', padding: '4px', fontSize: '0.7rem', marginTop: '5px'}}/>
+                            </th>
+                            <th style={{ padding: '10px' }}>
+                                HALLAZGO<br/>
+                                <input placeholder="Buscar título..." value={filters.title} onChange={e => setFilters({...filters, title: e.target.value})} style={{width: '80%', padding: '4px', fontSize: '0.7rem', marginTop: '5px'}}/>
+                            </th>
+                            <th style={{ padding: '10px' }}>DESCRIPCIÓN</th>
+                            <th style={{ padding: '10px' }}>ACCIÓN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? <tr><td colSpan="5" style={{textAlign: 'center', padding: '2rem'}}>Analizando base de conocimientos...</td></tr> : 
+                         currentItems.map((ins, idx) => {
+                            const style = getSeverityStyle(ins.severity);
+                            return (
+                                <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                    <td style={{ padding: '12px' }}>
+                                        <span style={{ background: style.bg, color: 'white', padding: '3px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.7rem' }}>{style.label}</span>
+                                    </td>
+                                    <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{(ins.category || 'BI').toUpperCase()}</td>
+                                    <td style={{ padding: '12px', fontWeight: '600' }}>{ins.title}</td>
+                                    <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{ins.description}</td>
+                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                        <button onClick={() => askAI(ins)} className="btn btn-secondary" style={{ padding: '5px 10px', fontSize: '0.75rem', background: 'var(--accent)', color: 'white' }} title="Obtener solución IA">
+                                            <i className="fas fa-bolt"></i> Solución
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '2rem' }}>
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="btn btn-secondary" style={{ padding: '4px 12px' }}>Anterior</button>
+                <span style={{ alignSelf: 'center', fontSize: '0.8rem' }}>{currentPage} de {totalPages || 1}</span>
+                <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)} className="btn btn-secondary" style={{ padding: '4px 12px' }}>Siguiente</button>
             </div>
         </div>
     );
 }
+
+
 
 function App() {
     const { theme, toggleTheme } = useTheme();
     const [activeView, setActiveView] = useState('chat');
     const [appLoaded, setAppLoaded] = useState(false);
     const [pipelineData, setPipelineData] = useState(null);
+    const [messages, setMessages] = useState([]);
+
+    // 1. CARGAR HISTORIAL Y ÚLTIMOS RESULTADOS AL INICIO
+    useEffect(() => {
+        // Cargar Chat
+        fetch('/chat/history')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.length > 0) setMessages(data);
+                else setMessages([{ role: 'bot', text: '¡Bienvenido(a) a CloudLabs AI Intelligence! Ejecuta el pipeline en Dashboard para precargar los datos, y luego consúltame lo que necesites.' }]);
+            })
+            .catch(console.error);
+
+        // Cargar Último Pipeline (Precarga Inteligente)
+        fetch('/pipeline/latest_results')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    setPipelineData(data.stages);
+                }
+            })
+            .catch(console.error);
+    }, []);
+
+    const clearChat = () => {
+        setMessages([{ role: 'bot', text: 'Conversación reiniciada. ¿En qué más puedo ayudarte?' }]);
+    };
 
     return (
         <>
@@ -479,9 +595,27 @@ function App() {
                         </div>
                     </header>
 
-                    {activeView === 'chat' && <ChatView pipelineData={pipelineData} />}
-                    {activeView === 'dashboard' && <DashboardView onPipelineComplete={(data) => setPipelineData(data)} />}
-                    {activeView === 'analysis' && <AnalysisView />}
+                    {activeView === 'chat' && (
+                        <ChatView 
+                            pipelineData={pipelineData} 
+                            messages={messages} 
+                            setMessages={setMessages} 
+                            clearChat={clearChat}
+                        />
+                    )}
+                    {activeView === 'dashboard' && (
+                        <DashboardView 
+                            pipelineData={pipelineData}
+                            onPipelineComplete={(data) => setPipelineData(data)} 
+                        />
+                    )}
+                    {activeView === 'analysis' && (
+                        <AnalysisView 
+                            setActiveView={setActiveView} 
+                            setMessages={setMessages} 
+                            pipelineData={pipelineData}
+                        />
+                    )}
                     {activeView === 'upload' && <UploadView />}
                 </main>
 

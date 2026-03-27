@@ -1,9 +1,17 @@
 """
 SQLAlchemy models for persisting pipeline results.
 """
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, ForeignKey, Text
 from sqlalchemy.sql import func
+from datetime import datetime
 from app.core.database import Base
+
+class ChatMessageModel(Base):
+    __tablename__ = "chat_history"
+    id = Column(Integer, primary_key=True, index=True)
+    role = Column(String)  # 'user' or 'bot'
+    content = Column(Text)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
 class PipelineExecution(Base):
     __tablename__ = "pipeline_executions"
@@ -45,7 +53,7 @@ class ActionLogModel(Base):
 class CleanedUser(Base):
     __tablename__ = "cleaned_users"
     id = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(Integer, index=True)
+    usuario_id = Column(Integer, unique=True, index=True)
     edad = Column(Float)
     genero = Column(String)
     ciudad = Column(String)
@@ -58,13 +66,13 @@ class CleanedEvent(Base):
     usuario_id = Column(Integer, index=True)
     fecha_evento = Column(String)
     tipo_evento = Column(String)
-    detalle = Column(String)
+    detalle = Column(Text)
     execution_id = Column(Integer, ForeignKey("pipeline_executions.id"))
 
 class CleanedProduct(Base):
     __tablename__ = "cleaned_products"
     id = Column(Integer, primary_key=True, index=True)
-    producto_id = Column(Integer, index=True)
+    producto_id = Column(Integer, unique=True, index=True)
     nombre = Column(String)
     categoria = Column(String)
     execution_id = Column(Integer, ForeignKey("pipeline_executions.id"))
@@ -73,7 +81,7 @@ class CleanedInteraction(Base):
     __tablename__ = "cleaned_interactions"
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, index=True)
-    producto_id = Column(Integer)
+    producto_id = Column(Integer, index=True)
     fecha = Column(String)
     accion = Column(String)
     execution_id = Column(Integer, ForeignKey("pipeline_executions.id"))

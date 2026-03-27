@@ -87,6 +87,8 @@ class DataPipeline:
                     k: raw[k].shape[0] - clean[k].shape[0] for k in raw
                 },
             }
+            # Cache para persistencia sin re-procesar
+            result.stages["_raw_clean_dfs"] = clean
 
             # ── C. Exploratory Analysis ──────────────────────────────────
             print("[C] Exploratory analysis…")
@@ -152,51 +154,52 @@ class DataPipeline:
         return result
 
     # ------------------------------------------------------------------
-    # Stage implementations
+    # Stage implementations (Parallelized for Speed)
     # ------------------------------------------------------------------
     def _load_raw(self) -> Dict[str, pd.DataFrame]:
+        from concurrent.futures import ThreadPoolExecutor
         files = {
             "usuarios": "usuarios.csv",
             "eventos": "eventos.csv",
             "productos": "productos.csv",
             "interacciones": "interacciones.csv",
         }
-        data = {}
-        for name, fname in files.items():
+        
+        def load_one(name: str, fname: str):
             path = self.data_dir / fname
             if not path.exists():
-                # Búsqueda flexible de archivos por patrón en caso de que el nombre cambie un poco
                 found_files = list(self.data_dir.glob(f"*{name}*.csv"))
-                if found_files:
-                    path = found_files[0]
-                    print(f"   ⚠️ Archivo exacto no hallado, cargando alternativo: {path.name}")
-                else:
-                    raise FileNotFoundError(f"Data file not found: {path} (ni patrones parecidos)")
+                if found_files: path = found_files[0]
+                else: raise FileNotFoundError(f"Data file not found: {path}")
             
             df = pd.read_csv(path)
-            
-            # Aplicar MAPEO DINAMICO DE COLUMNAS (Punto 2 y 3 del Stage 1)
-            # Esto corrige 'User_ID' -> 'usuario_id', etc.
             df = dynamic_column_mapping(df, {})
-            
-            print(f"   ↳ {path.name}: {df.shape[0]} rows × {df.shape[1]} cols")
-            data[name] = df
-        return data
+            print(f"   ↳ {path.name}: {len(df)} rows loaded.")
+            return name, df
+
+        with ThreadPoolExecutor() as executor:
+            results = list(executor.map(lambda p: load_one(*p), files.items()))
+        
+        return dict(results)
 
     def _clean(self, raw: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
-        cleaned = {}
-        for name, df in raw.items():
-            before = df.shape[0]
+        from concurrent.futures import ThreadPoolExecutor
+        
+        def clean_one(name: str, df: pd.DataFrame):
+            before = len(df)
             df_c = self.cleaner.remove_duplicates(df)
             df_c = self.cleaner.handle_missing_data(df_c)
             df_c = self.cleaner.remove_outliers(df_c)
             df_c = self.cleaner.correct_typos(df_c)
             df_c = self.cleaner.check_logical_integrity(df_c)
             df_c = self.cleaner.normalize_text(df_c)
-            after = df_c.shape[0]
-            print(f"   ↳ {name}: {before} → {after} rows (removed {before - after})")
-            cleaned[name] = df_c
-        return cleaned
+            print(f"   ↳ {name}: {before} → {len(df_c)} rows.")
+            return name, df_c
+
+        with ThreadPoolExecutor() as executor:
+            results = list(executor.map(lambda p: clean_one(*p), raw.items()))
+        
+        return dict(results)
 
     def _explore(self, clean: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
         summary = {}
@@ -208,8 +211,6 @@ class DataPipeline:
                 "missing_fields": missing.to_dict() if not missing.empty else {},
                 "dtypes": df.dtypes.astype(str).to_dict(),
             }
-            print(f"   ↳ {name}: {df.shape[0]} rows, "
-                  f"{int(missing['missing_count'].sum()) if not missing.empty else 0} missing vals")
         return summary
 
     def _model(self, clean: Dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -219,11 +220,6 @@ class DataPipeline:
             clean["eventos"],
             clean["interacciones"],
         )
-        print(f"   ↳ Segmentation: {feat['segment_label'].value_counts().to_dict()}")
-
         risk_model = AbandonmentRiskModel()
         feat = risk_model.train(feat)
-        avg_risk = feat["risk_score"].mean()
-        print(f"   ↳ Avg risk score: {avg_risk:.3f}")
-
         return feat
