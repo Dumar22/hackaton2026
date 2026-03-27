@@ -1,0 +1,11 @@
+usuario_id,fecha_evento,tipo_evento,detalle
+1,2026-03-01,login,web
+1,2026-03-01,simulacion,inicio
+1,2026-03-01,simulacion,fin
+2,2026-03-02,login,mobile
+2,2026-03-02,simulacion,inicio
+3,2026-03-03,login,web
+4,2026-03-03,simulacion,inicio
+5,2026-03-04,login,web
+6,2026-03-04,simulacion,fin
+7,2026-03-05,login,mobile

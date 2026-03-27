@@ -1,0 +1,8 @@
+usuario_id,edad,genero,ciudad,fecha_registro
+1,22,M,Bogotá,2025-09-01
+2,19,F,Medellín,2025-10-15
+3,25,M,Cali,2025-11-20
+4,NaN,F,Bogotá,2025-12-01
+5,21,,Cali,2026-01-10
+6,23,M,,2026-02-05
+7,20,F,Medellín,2026-02-20

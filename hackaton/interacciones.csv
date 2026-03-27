@@ -1,0 +1,8 @@
+usuario_id,producto_id,fecha,accion
+1,101,2026-03-01,completado
+2,102,2026-03-02,abandonado
+3,101,2026-03-03,completado
+4,103,2026-03-03,completado
+5,102,2026-03-04,abandonado
+6,101,2026-03-04,completado
+7,103,2026-03-05,completado
