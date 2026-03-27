@@ -150,7 +150,7 @@ class DataPipeline:
             result.success = False
             result.error = str(exc)
             print(f"\n❌ Pipeline failed: {exc}")
-            raise
+            # raise  <-- Comentado para evitar HTTP 500 y que main.py retorne el mensaje gracefully
 
         finally:
             result.duration_ms = round((time.perf_counter() - t0) * 1000, 2)
