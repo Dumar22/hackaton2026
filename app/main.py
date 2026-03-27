@@ -7,7 +7,7 @@ Run with:
 Or directly:
     python -m app.main
 """
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import io
@@ -110,20 +110,22 @@ def data_summary():
 # Cleaning endpoints
 # ---------------------------------------------------------------------------
 @app.post("/clean/csv", tags=["Cleaning"])
-async def clean_csv_upload(file: UploadFile = File(...)):
+async def clean_csv_upload(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db),
+    persist: bool = Query(True)
+):
     """
-    Uploads a CSV file, applies the full cleaning pipeline and
-    returns the cleaned data as JSON.
+    Uploads a CSV. If persist=True, it saves to DB. If False, only returns validation report.
     """
     if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only CSV files are supported on this endpoint.")
+        raise HTTPException(status_code=400, detail="Only CSV files supported.")
 
     contents = await file.read()
     raw_df = pd.read_csv(io.BytesIO(contents))
-
     cleaner = CSVCleaner()
 
-    # Run cleaning steps manually (no file I/O needed here)
+    # Full Cleaning Pipeline
     df = cleaner.handle_missing_data(raw_df)
     df = cleaner.remove_duplicates(df)
     df = cleaner.remove_outliers(df)
@@ -131,11 +133,45 @@ async def clean_csv_upload(file: UploadFile = File(...)):
     df = cleaner.check_logical_integrity(df)
     df = cleaner.normalize_text(df)
 
+    # PERSISTENCE LOGIC (Optional)
+    msg = "Validación completada. (Sin cambios en BD)"
+    cols = [c.lower() for c in df.columns]
+    
+    if persist:
+        try:
+            if "usuario_id" in cols and "nombre" in cols:
+                # Es un archivo de Usuarios
+                for _, row in df.iterrows():
+                    db.merge(db_models.CleanedUser(
+                        usuario_id=int(row['usuario_id']),
+                        nombre=str(row['nombre']),
+                        ciudad=str(row.get('ciudad', 'Desconocido')),
+                        edad=int(row.get('edad', 0))
+                    ))
+                msg = "¡Base de USUARIOS actualizada y sincronizada!"
+            elif "tipo_evento" in cols:
+                # Es un archivo de Eventos
+                for _, row in df.iterrows():
+                    db.add(db_models.CleanedEvent(
+                        usuario_id=int(row['usuario_id']),
+                        tipo_evento=str(row['tipo_evento']),
+                        timestamp=pd.to_datetime(row.get('timestamp', 'now'))
+                    ))
+                msg = "¡HISTORIAL DE EVENTOS alimentado al sistema!"
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            msg = f"Limpieza OK, pero la sincronización falló: {str(e)}"
+
     return {
+        "status": "success",
+        "message": msg,
+        "is_persisted": persist,
         "original_rows": raw_df.shape[0],
         "cleaned_rows": df.shape[0],
-        "columns": list(df.columns),
-        "data": df.head(50).to_dict(orient="records"),
+        "removed_rows": raw_df.shape[0] - df.shape[0],
+        "quality_score": round((df.shape[0] / raw_df.shape[0]) * 100, 1) if raw_df.shape[0] > 0 else 0,
+        "columns": list(df.columns)
     }
 
 
@@ -329,6 +365,30 @@ def get_chat_history(db: Session = Depends(get_db)):
     messages = db.query(db_models.ChatMessageModel).order_by(db_models.ChatMessageModel.timestamp.asc()).all()
     # Map to the format React expects { role, text }
     return [{"role": m.role, "text": m.content} for m in messages]
+
+@app.post("/chat/clear", tags=["AI Chat / Admin"])
+async def hard_reset_system(db: Session = Depends(get_db)):
+    """
+    PERFORMS A HARD RESET: Deletes ALL data (Chat, Insights, Actions, Cleaned Data).
+    """
+    try:
+        # Delete in order of dependencies (Foreign Keys)
+        db.query(db_models.ChatMessageModel).delete()
+        db.query(db_models.InsightModel).delete()
+        db.query(db_models.ActionLogModel).delete()
+        db.query(db_models.PipelineExecution).delete()
+        
+        # Cleaned Datasets
+        db.query(db_models.CleanedUser).delete()
+        db.query(db_models.CleanedEvent).delete()
+        db.query(db_models.CleanedProduct).delete()
+        db.query(db_models.CleanedInteraction).delete()
+        
+        db.commit()
+        return {"status": "success", "message": "¡Sistema CloudLabs reseteado a cero! Listo para nueva ingesta."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error en Hard Reset: {str(e)}")
 
 @app.get("/pipeline/latest_results", tags=["Pipeline"])
 def get_latest_pipeline_results(db: Session = Depends(get_db)):

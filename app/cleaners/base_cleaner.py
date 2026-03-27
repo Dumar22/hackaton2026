@@ -64,54 +64,74 @@ class BaseCleaner(ABC):
         return df.drop_duplicates()
 
     def remove_outliers(self, df: pd.DataFrame) -> pd.DataFrame:
-        """4. Valores extremos (outliers): Eliminar usando rango intercuartílico (IQR) en numéricas"""
+        """
+        4. Valores extremos (outliers): Optimización Vectorizada.
+        Calcula una máscara global para filtrar el DataFrame una sola vez.
+        """
         numeric_cols = df.select_dtypes(include=[np.number]).columns
+        if numeric_cols.empty: return df
+
+        # Construir máscara booleana global de 'filas válidas'
+        global_mask = pd.Series(True, index=df.index)
+        
         for col in numeric_cols:
-            Q1 = df[col].quantile(0.25)
-            Q3 = df[col].quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 1.5 * IQR
-            upper_bound = Q3 + 1.5 * IQR
-            # Filtrar DataFrame eliminando valores fuera de los bounds
-            df = df[(df[col] >= lower_bound) & (df[col] <= upper_bound)]
-        return df
+            col_data = df[col]
+            q1 = col_data.quantile(0.25)
+            q3 = col_data.quantile(0.75)
+            iqr = q3 - q1
+            lower = q1 - 1.5 * iqr
+            upper = q3 + 1.5 * iqr
+            # Actualizar máscara (AND lógico)
+            global_mask &= (col_data >= lower) & (col_data <= upper)
+
+        return df[global_mask]
 
     def correct_typos(self, df: pd.DataFrame) -> pd.DataFrame:
-        """5. Errores tipográficos: Corregir en variables categóricas"""
+        """
+        5. Errores tipográficos: Optimización de motor de strings.
+        Consolida operaciones y utiliza PyArrow para velocidad extrema si está disponible.
+        """
         text_cols = df.select_dtypes(include=['object', 'string']).columns
-        for col in text_cols:
-            # Limpieza básica: quitar espacios sobrantes (ej. dobles espacios a uno)
-            df[col] = df[col].astype(str).str.strip()
-            df[col] = df[col].str.replace(r'\s+', ' ', regex=True)
-            # Reemplazos puntuales específicos del dominio (se pueden configurar dicts a futuro)
+        if text_cols.empty: return df
+
+        # Intentar usar motor PyArrow para máxima velocidad en regex
+        try:
+            for col in text_cols:
+                # Combinamos limpieza en una sola asignación para evitar copias intermedias
+                df[col] = df[col].astype(str).str.strip().str.replace(r'\s+', ' ', regex=True, engine='pyarrow')
+        except (TypeError, ImportError):
+            # Fallback al motor estándar si PyArrow no está instalado o compatible
+            for col in text_cols:
+                df[col] = df[col].astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
+                
         return df
 
     def check_logical_integrity(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        6. Integridad Lógica: Validaciones estándar de sentido común entre variables.
+        6. Integridad Lógica: Validaciones vectorizadas.
         """
-        # Restricción Lógica de la Edad: Si existe 'edad' o 'age', debe estar en un rango [0, 120]
+        # Restricción Lógica de la Edad
         age_cols = [col for col in df.columns if 'edad' in col.lower() or 'age' in col.lower()]
         for col in age_cols:
             if pd.api.types.is_numeric_dtype(df[col]):
                 df = df[(df[col] >= 0) & (df[col] <= 120)]
 
-        # Restricción Lógica de Fechas: Ej. Fecha_Entrega NO menor a Fecha_Pedido
+        # Restricción Lógica de Fechas
         if 'fecha_pedido' in df.columns and 'fecha_entrega' in df.columns:
             try:
                 pedido = pd.to_datetime(df['fecha_pedido'], errors='coerce')
                 entrega = pd.to_datetime(df['fecha_entrega'], errors='coerce')
-                valid_dates = (entrega >= pedido) | entrega.isna() | pedido.isna()
-                df = df[valid_dates]
-            except Exception:
-                pass
+                df = df[(entrega >= pedido) | entrega.isna() | pedido.isna()]
+            except: pass
 
         return df
 
     def normalize_text(self, df: pd.DataFrame) -> pd.DataFrame:
-        """7. Normalizar el texto (Minúsculas)"""
+        """
+        7. Normalizar el texto: Consolidación a minúsculas.
+        """
         text_cols = df.select_dtypes(include=['object', 'string']).columns
+        # No usamos pyarrow aquí porque .lower() es muy eficiente nativamente
         for col in text_cols:
-            # Todas las variables de texto a minúsculas
             df[col] = df[col].astype(str).str.lower()
         return df

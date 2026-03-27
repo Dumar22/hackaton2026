@@ -107,20 +107,24 @@ class InsightsGenerator:
                 metric_label="estudiantes inactivos"
             ),
             Insight(
-                category="strategic",
+                category="estratégico",
                 severity="success",
-                title="[NEW] Ciudad Líder en Retención",
+                title="[NUEVO] Ciudad Líder en Retención",
                 description=f"Los estudiantes de {top_city} presentan la tasa de finalización de retos más alta de la plataforma.",
                 affected_users=[],
                 metric_label="máxima eficacia"
             ),
             Insight(
-                category="strategic",
+                category="estratégico",
                 severity="info",
-                title="[NEW] Correlación Tiempo-Éxito",
+                title="[NUEVO] Correlación Tiempo-Éxito",
                 description="Se observa que las sesiones de 20-30 min maximizan la retención frente a sesiones de más de 1h.",
                 affected_users=[],
-                metric_label="sweet spot educativo"    def _high_performers(self) -> List[Insight]:
+                metric_label="sweet spot educativo"
+            )
+        ]
+
+    def _high_performers(self) -> List[Insight]:
         """Componente 1: Estudiantes de Alto Rendimiento"""
         top = self.feat[self.feat.get("segment_label", pd.Series()) == "high_performer"]
         if top.empty: return []
@@ -207,10 +211,6 @@ class InsightsGenerator:
                 metric_label="punto óptimo detectado"
             )
         ]
-os"
-        ))
-        
-        return insights
 
     def to_dict(self) -> List[Dict[str, Any]]:
         return [

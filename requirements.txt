@@ -1,25 +1,12 @@
-# Core API
-fastapi>=0.110.0
-uvicorn[standard]>=0.29.0
+fastapi==0.110.0
+uvicorn==0.27.1
+pandas[pyarrow]>=2.2.0
+sqlalchemy>=2.0.28
+psycopg2-binary>=2.9.9
+openai>=1.14.0
+pydantic-settings>=2.2.1
 python-multipart>=0.0.9
-
-# Data processing
-pandas>=2.2.0
-numpy>=1.26.0
-openpyxl>=3.1.2          # Excel support
-sqlalchemy>=2.0.0         # SQL support
-openai>=1.12.0           # OpenAI LLM
-psycopg2-binary>=2.9.9   # Postgres support
-
-
-
-# Configuration
-pydantic-settings>=2.2.0
-
-# AI / ML
-openai>=1.0.0
-google-generativeai>=0.5.0
-
-# Optional – uncomment if PDF extraction is needed
-# tabula-py>=2.9.0
-# pdfplumber>=0.10.0
+python-dotenv>=1.0.1
+numpy>=1.26.4
+openpyxl>=3.1.2
+jinja2>=3.1.3
